@@ -1,6 +1,10 @@
 import {createSlice} from '@reduxjs/toolkit';
-import type {PayloadAction} from '@reduxjs/toolkit';
+import type {PayloadAction, ThunkAction, UnknownAction} from '@reduxjs/toolkit';
 
+// Import de tipo puro: en runtime no existe (Babel lo borra al compilar), así
+// que no arma un ciclo con app/store.ts, que sí importa este módulo en
+// runtime. Mismo truco que ya usa listenerMiddleware.ts.
+import type {RootState} from '@/app/store';
 import {baseApi} from '@/services/api/baseApi';
 import {unauthorized} from '@/services/api/sessionEvents';
 import type {User} from '@/services/api/types';
@@ -65,20 +69,29 @@ export const {sessionMissing, sessionRestored, signedOut} =
 export default sessionSlice.reducer;
 
 /**
+ * Antes `dispatch` venía tipado a mano como `(action: unknown) => unknown`.
+ * `ThunkAction`, parametrizado con el `RootState` real de la store, tipa
+ * `dispatch` dentro del thunk como la `ThunkDispatch` real de la app (la
+ * misma que expone `AppDispatch`) en vez de `unknown`, y habilita que
+ * `store.dispatch(restoreSession())` / `store.dispatch(signOut())` compilen
+ * usando la `AppDispatch` real (`src/app/store.ts`, `src/services/session/useSession.ts`).
+ */
+type SessionThunk = ThunkAction<
+  Promise<void>,
+  RootState,
+  unknown,
+  UnknownAction
+>;
+
+/**
  * Bootstrap de sesión. `storage` se inyecta para poder testearlo sin AsyncStorage.
  * Se escribe como thunk a mano (no createAsyncThunk) porque no hay estados
  * pending/rejected que interesen: o hay sesión o no la hay.
  */
 export function restoreSession({
   storage = defaultStorage,
-}: {storage?: Storage} = {}) {
-  // El middleware de thunks llama a esta función con (dispatch, getState,
-  // extraArgument); acá solo hace falta `dispatch`, así que el resto se
-  // absorbe con un rest param para no atarse a esa forma exacta.
-  return async (
-    dispatch: (action: unknown) => unknown,
-    ..._rest: unknown[]
-  ): Promise<void> => {
+}: {storage?: Storage} = {}): SessionThunk {
+  return async dispatch => {
     const [token, rawUser] = await Promise.all([
       storage.getItem(STORAGE_KEYS.accessToken),
       storage.getItem(STORAGE_KEYS.user),
@@ -103,11 +116,10 @@ export function restoreSession({
 }
 
 /** Logout: limpia el slice, el storage y **todo** el cache de RTK Query. */
-export function signOut({storage = defaultStorage}: {storage?: Storage} = {}) {
-  return async (
-    dispatch: (action: unknown) => unknown,
-    ..._rest: unknown[]
-  ): Promise<void> => {
+export function signOut({
+  storage = defaultStorage,
+}: {storage?: Storage} = {}): SessionThunk {
+  return async dispatch => {
     await Promise.all([
       storage.removeItem(STORAGE_KEYS.accessToken),
       storage.removeItem(STORAGE_KEYS.user),

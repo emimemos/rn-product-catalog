@@ -1,3 +1,4 @@
+import {makeStore} from '@/app/store';
 import {unauthorized} from '@/services/api/sessionEvents';
 import type {User} from '@/services/api/types';
 import {createMemoryStorage, STORAGE_KEYS} from '@/services/storage';
@@ -89,41 +90,28 @@ describe('restoreSession', () => {
     await storage.setItem(STORAGE_KEYS.accessToken, 'tok');
     await storage.setItem(STORAGE_KEYS.user, JSON.stringify(USER));
 
-    const dispatched: string[] = [];
-    const thunk = restoreSession({storage});
-    await thunk(
-      action => {
-        dispatched.push(
-          typeof action === 'object' && action !== null && 'type' in action
-            ? String(action.type)
-            : '',
-        );
-        return action;
-      },
-      () => ({}),
-      undefined,
-    );
+    // Se dispatchea contra una store real (no se captura la lista de tipos
+    // despachados) para probar el resultado que ve la app, no el mecanismo:
+    // es el mismo camino que recorre `useSession` en producción.
+    const store = makeStore();
+    await store.dispatch(restoreSession({storage}));
 
-    expect(dispatched).toContain(sessionRestored.type);
+    expect(store.getState().session).toEqual({
+      status: 'signedIn',
+      accessToken: 'tok',
+      user: USER,
+    });
   });
 
   it('marca la sesión como ausente cuando no hay token', async () => {
     const storage = createMemoryStorage();
-    const dispatched: string[] = [];
-    const thunk = restoreSession({storage});
-    await thunk(
-      action => {
-        dispatched.push(
-          typeof action === 'object' && action !== null && 'type' in action
-            ? String(action.type)
-            : '',
-        );
-        return action;
-      },
-      () => ({}),
-      undefined,
-    );
+    const store = makeStore();
+    await store.dispatch(restoreSession({storage}));
 
-    expect(dispatched).toContain(sessionMissing.type);
+    expect(store.getState().session).toEqual({
+      status: 'signedOut',
+      accessToken: null,
+      user: null,
+    });
   });
 });
