@@ -1,10 +1,25 @@
 import {server} from '@/mocks/server.node';
 
-// La v3 del paquete expone el mock como el subpath `/jest` (antes era
-// `/jest/async-storage-mock`); este `require` usa la ruta actual.
-jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest'),
-);
+// La v3 del paquete solo publica su mock oficial (subpath `/jest`) como ESM,
+// y `transformIgnorePatterns` no lo transforma, así que un `require` directo
+// rompe con `SyntaxError: Unexpected token 'export'`. Se reimplementa acá el
+// mismo storage en memoria que expone ese mock, con la misma interfaz
+// (`getItem`/`setItem`/`removeItem`) que usa `src/services/storage`.
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const store = new Map<string, string>();
+  return {
+    __esModule: true,
+    default: {
+      getItem: async (key: string) => store.get(key) ?? null,
+      setItem: async (key: string, value: string) => {
+        store.set(key, value);
+      },
+      removeItem: async (key: string) => {
+        store.delete(key);
+      },
+    },
+  };
+});
 
 // El mock de esta versión expone todo bajo `.default` en vez de nombrados
 // (queda como default export en vez de exports nombrados), así que hay que
