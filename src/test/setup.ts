@@ -6,13 +6,16 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest'),
 );
 
-// El mock de esta versión expone todo bajo `.default` en vez de nombrados,
-// así que rompería la interoperabilidad con cómo este árbol mínimo importa
-// SafeAreaProvider/useSafeAreaInsets. Se habilita cuando algún componente
-// real dependa de esos hooks y valga la pena adaptar el import o el mock.
-// jest.mock('react-native-safe-area-context', () =>
-//   require('react-native-safe-area-context/jest/mock'),
-// );
+// El mock de esta versión expone todo bajo `.default` en vez de nombrados
+// (queda como default export en vez de exports nombrados), así que hay que
+// desenvolverlo acá para que `import {SafeAreaView, ...}` siga funcionando
+// con la interop normal de Babel.
+jest.mock('react-native-safe-area-context', () => {
+  const mock: {
+    default: object;
+  } = require('react-native-safe-area-context/jest/mock');
+  return mock.default;
+});
 
 // 'error' obliga a que todo request de un test esté explícitamente mockeado:
 // un endpoint nuevo sin handler falla en vez de colgarse.
