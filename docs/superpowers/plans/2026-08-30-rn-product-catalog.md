@@ -28,22 +28,23 @@
 
 El spec §3.1 no las lista; se agregan con justificación y se documentan en `CLAUDE.md`:
 
-| Archivo | Por qué |
-|---|---|
-| `src/services/api/types.ts` | El contrato de la API lo consumen features **y** mocks. Vive en la capa de API para que ninguna feature dependa de otra ni los mocks de una feature. |
-| `src/services/api/config.ts` | `API_BASE_URL` compartida entre `baseApi` y los handlers de MSW. |
-| `src/services/api/sessionEvents.ts` | `unauthorized` action creator neutral, para que `services` no importe de `features` al manejar el 401. |
-| `src/app/listenerMiddleware.ts` | `createListenerMiddleware` tipado; la persistencia se hace por listener en vez de dentro de los reducers (los reducers quedan puros). |
-| `src/services/api/productsApi.ts` | `getProduct` lo consumen el detalle (feature `catalog`) y favoritos (feature `favorites`). En la capa compartida, ninguna feature depende de otra. |
-| `src/services/session/` | El estado de sesión lo consumen `navigation`, `profile` y la capa de API. La feature `auth` conserva solo la pantalla de login. |
-| `src/services/favorites/` | Los favoritos los consumen la pantalla de favoritos y el detalle de producto. Mismo criterio. |
-| `src/utils/formatPrice.ts` | Formateo de precio compartido por catálogo, detalle y favoritos. |
+| Archivo                             | Por qué                                                                                                                                              |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/services/api/types.ts`         | El contrato de la API lo consumen features **y** mocks. Vive en la capa de API para que ninguna feature dependa de otra ni los mocks de una feature. |
+| `src/services/api/config.ts`        | `API_BASE_URL` compartida entre `baseApi` y los handlers de MSW.                                                                                     |
+| `src/services/api/sessionEvents.ts` | `unauthorized` action creator neutral, para que `services` no importe de `features` al manejar el 401.                                               |
+| `src/app/listenerMiddleware.ts`     | `createListenerMiddleware` tipado; la persistencia se hace por listener en vez de dentro de los reducers (los reducers quedan puros).                |
+| `src/services/api/productsApi.ts`   | `getProduct` lo consumen el detalle (feature `catalog`) y favoritos (feature `favorites`). En la capa compartida, ninguna feature depende de otra.   |
+| `src/services/session/`             | El estado de sesión lo consumen `navigation`, `profile` y la capa de API. La feature `auth` conserva solo la pantalla de login.                      |
+| `src/services/favorites/`           | Los favoritos los consumen la pantalla de favoritos y el detalle de producto. Mismo criterio.                                                        |
+| `src/utils/formatPrice.ts`          | Formateo de precio compartido por catálogo, detalle y favoritos.                                                                                     |
 
 ---
 
 ## Task 1: Scaffolding y toolchain en verde
 
 **Files:**
+
 - Create: todo el template de RN 0.87.1 en la raíz del repo (`android/`, `ios/`, `index.js`, `app.json`, `package.json`, `Gemfile`)
 - Create: `tsconfig.json`, `babel.config.js`, `jest.config.js`, `eslint.config.js`, `.prettierrc.js`, `.gitignore`
 - Create: `.husky/pre-commit`, `.lintstagedrc.json`
@@ -52,6 +53,7 @@ El spec §3.1 no las lista; se agregan con justificación y se documentan en `CL
 - Test: `src/utils/__tests__/formatPrice.test.ts`
 
 **Interfaces:**
+
 - Consumes: nada.
 - Produces: `formatPrice(cents: number): string`. Scripts npm `lint`, `typecheck`, `test`, `ios`, `android`, `start`. Alias `@/*` resoluble desde TS, Babel y Jest.
 
@@ -200,7 +202,15 @@ const prettierConfig = require('eslint-config-prettier');
 const importPlugin = require('eslint-plugin-import');
 
 module.exports = [
-  {ignores: ['node_modules/**', 'android/**', 'ios/**', 'coverage/**', 'vendor/**']},
+  {
+    ignores: [
+      'node_modules/**',
+      'android/**',
+      'ios/**',
+      'coverage/**',
+      'vendor/**',
+    ],
+  },
   ...reactNativeConfig,
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
@@ -215,7 +225,11 @@ module.exports = [
       'import/order': [
         'error',
         {
-          groups: [['builtin', 'external'], 'internal', ['parent', 'sibling', 'index']],
+          groups: [
+            ['builtin', 'external'],
+            'internal',
+            ['parent', 'sibling', 'index'],
+          ],
           pathGroups: [{pattern: '@/**', group: 'internal'}],
           pathGroupsExcludedImportTypes: ['builtin'],
           'newlines-between': 'always',
@@ -440,9 +454,11 @@ jobs:
 - [ ] **Step 21: Correr la verificación completa**
 
 Run:
+
 ```bash
 npm run lint && npm run typecheck && npm test
 ```
+
 Expected: los tres en verde. `npm test` corre 5 tests. La cobertura todavía no se exige (no hay archivos en `features/` ni `services/`); si `coverageThreshold` rompe, correr `npm test` sin `--coverage` hasta la Task 3 y anotarlo.
 
 - [ ] **Step 22: Commit**
@@ -457,6 +473,7 @@ git commit -m "chore: scaffolding RN 0.87.1 con TS strict, alias, ESLint, Jest y
 ## Task 2: Contrato de API y servicio de storage
 
 **Files:**
+
 - Create: `src/services/api/types.ts`
 - Create: `src/services/api/config.ts`
 - Create: `src/services/storage/types.ts`
@@ -467,8 +484,10 @@ git commit -m "chore: scaffolding RN 0.87.1 con TS strict, alias, ESLint, Jest y
 - Test: `src/services/storage/__tests__/memoryStorage.test.ts`
 
 **Interfaces:**
+
 - Consumes: nada.
 - Produces:
+
   - `CATEGORIES`, `Category`, `SortOption`, `Product`, `ProductsPage`, `ProductsQueryArgs`, `User`, `LoginRequest`, `LoginResponse` desde `@/services/api/types`.
   - `API_BASE_URL: string` desde `@/services/api/config`.
   - `interface Storage { getItem(key): Promise<string | null>; setItem(key, value): Promise<void>; removeItem(key): Promise<void> }`.
@@ -487,7 +506,13 @@ cd ios && pod install && cd ..
 `src/services/api/types.ts`:
 
 ```ts
-export const CATEGORIES = ['audio', 'wearables', 'computers', 'gaming', 'home'] as const;
+export const CATEGORIES = [
+  'audio',
+  'wearables',
+  'computers',
+  'gaming',
+  'home',
+] as const;
 
 export type Category = (typeof CATEGORIES)[number];
 
@@ -705,12 +730,15 @@ git commit -m "feat: contrato de API y servicio de storage detrás de una interf
 ## Task 3: Base de datos mock
 
 **Files:**
+
 - Create: `src/mocks/db.ts`
 - Test: `src/mocks/__tests__/db.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Category`, `Product`, `ProductsPage`, `SortOption` de `@/services/api/types`; `PAGE_SIZE` de `@/services/api/config`.
 - Produces:
+
   - `PRODUCTS: Product[]` (50 productos deterministas, 5 categorías × 10).
   - `queryProducts(params: QueryProductsParams): ProductsPage`
   - `findProduct(id: string): Product | undefined`
@@ -775,7 +803,11 @@ describe('queryProducts', () => {
   it('busca por nombre sin distinguir mayúsculas', () => {
     const page = queryProducts({q: 'nimbus', limit: 50});
     expect(page.total).toBeGreaterThan(0);
-    expect(page.items.every(p => /nimbus/i.test(p.name) || /nimbus/i.test(p.description))).toBe(true);
+    expect(
+      page.items.every(
+        p => /nimbus/i.test(p.name) || /nimbus/i.test(p.description),
+      ),
+    ).toBe(true);
   });
 
   it('devuelve una página vacía cuando no hay coincidencias', () => {
@@ -804,7 +836,12 @@ describe('queryProducts', () => {
   });
 
   it('combina búsqueda, filtro y orden', () => {
-    const page = queryProducts({q: 'a', category: 'gaming', sort: 'price_desc', limit: 50});
+    const page = queryProducts({
+      q: 'a',
+      category: 'gaming',
+      sort: 'price_desc',
+      limit: 50,
+    });
     expect(page.items.every(p => p.category === 'gaming')).toBe(true);
     const prices = page.items.map(p => p.priceCents);
     expect([...prices].sort((a, b) => b - a)).toEqual(prices);
@@ -836,7 +873,13 @@ Expected: FAIL — `Cannot find module '../db'`.
 ```ts
 import {PAGE_SIZE} from '@/services/api/config';
 import {CATEGORIES} from '@/services/api/types';
-import type {Category, Product, ProductsPage, SortOption, User} from '@/services/api/types';
+import type {
+  Category,
+  Product,
+  ProductsPage,
+  SortOption,
+  User,
+} from '@/services/api/types';
 
 const BASE_NAMES: Record<Category, string> = {
   audio: 'Auriculares',
@@ -863,20 +906,25 @@ const VARIANTS = [
  * Dataset determinista: mismos datos en cada corrida y en cada máquina, para que
  * los tests no dependan de un seed aleatorio y la demo sea reproducible.
  */
-export const PRODUCTS: Product[] = CATEGORIES.flatMap((category, categoryIndex) =>
-  VARIANTS.map((variant, variantIndex) => {
-    const index = categoryIndex * VARIANTS.length + variantIndex;
-    return {
-      id: `p-${String(index + 1).padStart(3, '0')}`,
-      name: `${BASE_NAMES[category]} ${variant}`,
-      description: `${BASE_NAMES[category]} ${variant} de la línea ${category}, edición ${2020 + (variantIndex % 6)}.`,
-      priceCents: 1999 + index * 1500,
-      category,
-      rating: Number((3 + ((index * 7) % 21) / 10).toFixed(1)),
-      stock: (index * 13) % 40,
-      imageUrl: `https://picsum.photos/seed/${index + 1}/400/400`,
-    };
-  }),
+export const PRODUCTS: Product[] = CATEGORIES.flatMap(
+  (category, categoryIndex) =>
+    VARIANTS.map((variant, variantIndex) => {
+      const index = categoryIndex * VARIANTS.length + variantIndex;
+      return {
+        id: `p-${String(index + 1).padStart(3, '0')}`,
+        name: `${BASE_NAMES[category]} ${variant}`,
+        description: `${
+          BASE_NAMES[category]
+        } ${variant} de la línea ${category}, edición ${
+          2020 + (variantIndex % 6)
+        }.`,
+        priceCents: 1999 + index * 1500,
+        category,
+        rating: Number((3 + ((index * 7) % 21) / 10).toFixed(1)),
+        stock: (index * 13) % 40,
+        imageUrl: `https://picsum.photos/seed/${index + 1}/400/400`,
+      };
+    }),
 );
 
 export const DEMO_USER: User = {
@@ -912,7 +960,13 @@ function compare(sort: SortOption): (a: Product, b: Product) => number {
  * páginas. Si el cursor no se encuentra, se empieza desde el principio.
  */
 export function queryProducts(params: QueryProductsParams = {}): ProductsPage {
-  const {q = '', category = 'all', sort = 'name', cursor = null, limit = PAGE_SIZE} = params;
+  const {
+    q = '',
+    category = 'all',
+    sort = 'name',
+    cursor = null,
+    limit = PAGE_SIZE,
+  } = params;
 
   const needle = q.trim().toLowerCase();
   const matching = PRODUCTS.filter(product => {
@@ -924,7 +978,10 @@ export function queryProducts(params: QueryProductsParams = {}): ProductsPage {
     return matchesCategory && matchesQuery;
   }).sort(compare(sort));
 
-  const start = cursor === null ? 0 : Math.max(matching.findIndex(p => p.id === cursor) + 1, 0);
+  const start =
+    cursor === null
+      ? 0
+      : Math.max(matching.findIndex(p => p.id === cursor) + 1, 0);
   const items = matching.slice(start, start + limit);
   const last = items[items.length - 1];
   const hasMore = start + items.length < matching.length;
@@ -959,6 +1016,7 @@ git commit -m "feat: base de datos mock con búsqueda, filtro, orden y paginado 
 ## Task 4: Handlers de MSW y arranque en tests y en dev
 
 **Files:**
+
 - Create: `src/mocks/handlers/auth.ts`
 - Create: `src/mocks/handlers/products.ts`
 - Create: `src/mocks/handlers/index.ts`
@@ -970,8 +1028,10 @@ git commit -m "feat: base de datos mock con búsqueda, filtro, orden y paginado 
 - Test: `src/mocks/__tests__/handlers.test.ts`
 
 **Interfaces:**
+
 - Consumes: `queryProducts`, `findProduct`, `DEMO_USER`, `DEMO_PASSWORD` de `../db`; `API_BASE_URL`, `PAGE_SIZE` de `@/services/api/config`.
 - Produces:
+
   - `handlers: RequestHandler[]` desde `@/mocks/handlers`
   - `server` (msw/node) desde `@/mocks/server.node`
   - `startMockServer(): Promise<void>` desde `@/mocks/server.native`
@@ -1041,7 +1101,9 @@ describe('handlers de productos', () => {
   });
 
   it('respeta el filtro de categoría', async () => {
-    const response = await fetch(`${API_BASE_URL}/products?category=audio&limit=50`);
+    const response = await fetch(
+      `${API_BASE_URL}/products?category=audio&limit=50`,
+    );
     const page = (await response.json()) as ProductsPage;
     expect(page.total).toBe(10);
   });
@@ -1078,7 +1140,12 @@ Expected: FAIL — el `fetch` no está interceptado (error de conexión a `local
 import {delay, http, HttpResponse} from 'msw';
 
 import {API_BASE_URL} from '@/services/api/config';
-import type {ApiErrorBody, LoginRequest, LoginResponse, User} from '@/services/api/types';
+import type {
+  ApiErrorBody,
+  LoginRequest,
+  LoginResponse,
+  User,
+} from '@/services/api/types';
 
 import {DEMO_PASSWORD, DEMO_USER} from '../db';
 
@@ -1097,22 +1164,37 @@ async function maybeDelay(): Promise<void> {
 }
 
 export const authHandlers = [
-  http.post<never, LoginRequest>(`${API_BASE_URL}/auth/login`, async ({request}) => {
-    const {email, password} = await request.json();
-    await maybeDelay();
+  http.post<never, LoginRequest>(
+    `${API_BASE_URL}/auth/login`,
+    async ({request}) => {
+      const {email, password} = await request.json();
+      await maybeDelay();
 
-    if (email.trim().toLowerCase() !== DEMO_USER.email || password !== DEMO_PASSWORD) {
-      return HttpResponse.json<ApiErrorBody>({message: 'Credenciales inválidas'}, {status: 401});
-    }
+      if (
+        email.trim().toLowerCase() !== DEMO_USER.email ||
+        password !== DEMO_PASSWORD
+      ) {
+        return HttpResponse.json<ApiErrorBody>(
+          {message: 'Credenciales inválidas'},
+          {status: 401},
+        );
+      }
 
-    return HttpResponse.json<LoginResponse>({accessToken: ACCESS_TOKEN, user: DEMO_USER});
-  }),
+      return HttpResponse.json<LoginResponse>({
+        accessToken: ACCESS_TOKEN,
+        user: DEMO_USER,
+      });
+    },
+  ),
 
   http.get(`${API_BASE_URL}/auth/me`, async ({request}) => {
     await maybeDelay();
 
     if (request.headers.get('Authorization') !== `Bearer ${ACCESS_TOKEN}`) {
-      return HttpResponse.json<ApiErrorBody>({message: 'No autorizado'}, {status: 401});
+      return HttpResponse.json<ApiErrorBody>(
+        {message: 'No autorizado'},
+        {status: 401},
+      );
     }
 
     return HttpResponse.json<User>(DEMO_USER);
@@ -1129,7 +1211,13 @@ import {delay, http, HttpResponse} from 'msw';
 
 import {API_BASE_URL, PAGE_SIZE} from '@/services/api/config';
 import {CATEGORIES} from '@/services/api/types';
-import type {ApiErrorBody, Category, Product, ProductsPage, SortOption} from '@/services/api/types';
+import type {
+  ApiErrorBody,
+  Category,
+  Product,
+  ProductsPage,
+  SortOption,
+} from '@/services/api/types';
 
 import {findProduct, queryProducts} from '../db';
 
@@ -1159,7 +1247,10 @@ export const productHandlers = [
 
     // Inyección de fallos para demostrar el manejo de errores en vivo.
     if (url.searchParams.get('fail') === '1') {
-      return HttpResponse.json<ApiErrorBody>({message: 'Fallo inyectado'}, {status: 500});
+      return HttpResponse.json<ApiErrorBody>(
+        {message: 'Fallo inyectado'},
+        {status: 500},
+      );
     }
 
     const limitParam = Number(url.searchParams.get('limit'));
@@ -1168,7 +1259,8 @@ export const productHandlers = [
       category: parseCategory(url.searchParams.get('category')),
       sort: parseSort(url.searchParams.get('sort')),
       cursor: url.searchParams.get('cursor'),
-      limit: Number.isFinite(limitParam) && limitParam > 0 ? limitParam : PAGE_SIZE,
+      limit:
+        Number.isFinite(limitParam) && limitParam > 0 ? limitParam : PAGE_SIZE,
     });
 
     return HttpResponse.json<ProductsPage>(page);
@@ -1179,7 +1271,10 @@ export const productHandlers = [
     const product = findProduct(params.id);
 
     if (!product) {
-      return HttpResponse.json<ApiErrorBody>({message: 'Producto no encontrado'}, {status: 404});
+      return HttpResponse.json<ApiErrorBody>(
+        {message: 'Producto no encontrado'},
+        {status: 404},
+      );
     }
 
     return HttpResponse.json<Product>(product);
@@ -1334,7 +1429,10 @@ export async function startMockServer(): Promise<void> {
     }
     const request = new Request(url, init);
     for (const handler of handlers) {
-      const result = await handler.run({request, requestId: String(Date.now())});
+      const result = await handler.run({
+        request,
+        requestId: String(Date.now()),
+      });
       if (result?.response) {
         return result.response;
       }
@@ -1359,6 +1457,7 @@ git commit -m "feat: handlers MSW compartidos entre la app en dev y los tests"
 ## Task 5: Store, baseApi y hooks tipados
 
 **Files:**
+
 - Create: `src/services/api/sessionEvents.ts`
 - Create: `src/services/api/baseApi.ts`
 - Create: `src/app/listenerMiddleware.ts`
@@ -1370,8 +1469,10 @@ git commit -m "feat: handlers MSW compartidos entre la app en dev y los tests"
 - Test: `src/services/api/__tests__/baseApi.test.ts`
 
 **Interfaces:**
+
 - Consumes: `API_BASE_URL` de `@/services/api/config`; `handlers` de `@/mocks/handlers`.
 - Produces:
+
   - `unauthorized` (action creator sin payload) desde `@/services/api/sessionEvents`
   - `baseApi` (con `injectEndpoints`, `tagTypes: ['Product', 'User']`, `reducerPath: 'api'`) desde `@/services/api/baseApi`
   - `listenerMiddleware`, `startAppListening` desde `@/app/listenerMiddleware`
@@ -1407,7 +1508,11 @@ export const unauthorized = createAction('session/unauthorized');
 
 ```ts
 import {createApi, fetchBaseQuery} from '@reduxjs/toolkit/query/react';
-import type {BaseQueryFn, FetchArgs, FetchBaseQueryError} from '@reduxjs/toolkit/query/react';
+import type {
+  BaseQueryFn,
+  FetchArgs,
+  FetchBaseQueryError,
+} from '@reduxjs/toolkit/query/react';
 
 import {API_BASE_URL} from './config';
 import {unauthorized} from './sessionEvents';
@@ -1431,11 +1536,11 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
-const baseQueryWithAuth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
-  args,
-  api,
-  extraOptions,
-) => {
+const baseQueryWithAuth: BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> = async (args, api, extraOptions) => {
   const result = await rawBaseQuery(args, api, extraOptions);
   if (result.error?.status === 401) {
     api.dispatch(unauthorized());
@@ -1574,7 +1679,10 @@ interface ExtendedRenderOptions {
  */
 export function renderWithProviders(
   ui: ReactElement,
-  {preloadedState, store = makeStore(preloadedState)}: ExtendedRenderOptions = {},
+  {
+    preloadedState,
+    store = makeStore(preloadedState),
+  }: ExtendedRenderOptions = {},
 ) {
   function Wrapper({children}: PropsWithChildren) {
     return <Provider store={store}>{children}</Provider>;
@@ -1628,6 +1736,7 @@ git commit -m "feat: store de Redux, baseApi con auth y 401, y hooks tipados"
 ## Task 6: Theme tokens y componentes de UI
 
 **Files:**
+
 - Create: `src/theme/tokens.ts`
 - Create: `src/components/ui/Screen.tsx`
 - Create: `src/components/ui/Button.tsx`
@@ -1640,8 +1749,10 @@ git commit -m "feat: store de Redux, baseApi con auth y 401, y hooks tipados"
 - Test: `src/components/ui/__tests__/Button.test.tsx`
 
 **Interfaces:**
+
 - Consumes: nada de tasks previas.
 - Produces desde `@/components/ui`:
+
   - `<Screen>{children}</Screen>` — `{children: ReactNode; scroll?: boolean}`
   - `<Button title label onPress disabled loading testID />` — `{label: string; onPress: () => void; disabled?: boolean; loading?: boolean; variant?: 'primary' | 'ghost'; testID?: string}`
   - `<TextField />` — `{label: string; value: string; onChangeText: (t: string) => void; error?: string; ...TextInputProps}`
@@ -1727,7 +1838,9 @@ export function Screen({children, scroll = false}: ScreenProps) {
   const Container = scroll ? ScrollView : View;
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <Container style={styles.content} contentContainerStyle={scroll ? styles.scroll : undefined}>
+      <Container
+        style={styles.content}
+        contentContainerStyle={scroll ? styles.scroll : undefined}>
         {children}
       </Container>
     </SafeAreaView>
@@ -1767,7 +1880,9 @@ describe('Button', () => {
   });
 
   it('muestra un indicador y oculta el label mientras carga', () => {
-    render(<Button label="Ingresar" onPress={jest.fn()} loading testID="submit" />);
+    render(
+      <Button label="Ingresar" onPress={jest.fn()} loading testID="submit" />,
+    );
     expect(screen.queryByText('Ingresar')).toBeNull();
     expect(screen.getByTestId('submit')).toBeDisabled();
   });
@@ -1820,9 +1935,13 @@ export function Button({
         (pressed || isDisabled) && styles.dimmed,
       ]}>
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? colors.primaryText : colors.primary} />
+        <ActivityIndicator
+          color={variant === 'primary' ? colors.primaryText : colors.primary}
+        />
       ) : (
-        <Text style={[styles.label, variant === 'ghost' && styles.ghostLabel]}>{label}</Text>
+        <Text style={[styles.label, variant === 'ghost' && styles.ghostLabel]}>
+          {label}
+        </Text>
       )}
     </Pressable>
   );
@@ -1837,7 +1956,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   primary: {backgroundColor: colors.primary},
-  ghost: {backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border},
+  ghost: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   dimmed: {opacity: 0.6},
   label: {...typography.body, fontWeight: '600', color: colors.primaryText},
   ghostLabel: {color: colors.primary},
@@ -1867,7 +1990,13 @@ interface TextFieldProps extends Omit<TextInputProps, 'style'> {
   error?: string;
 }
 
-export function TextField({label, value, onChangeText, error, ...rest}: TextFieldProps) {
+export function TextField({
+  label,
+  value,
+  onChangeText,
+  error,
+  ...rest
+}: TextFieldProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
@@ -1951,7 +2080,14 @@ export function ErrorView({message, onRetry}: ErrorViewProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.message}>{message}</Text>
-      {onRetry != null && <Button label="Reintentar" onPress={onRetry} variant="ghost" testID="retry" />}
+      {onRetry != null && (
+        <Button
+          label="Reintentar"
+          onPress={onRetry}
+          variant="ghost"
+          testID="retry"
+        />
+      )}
     </View>
   );
 }
@@ -1978,7 +2114,12 @@ interface SkeletonProps {
 }
 
 export function Skeleton({height, width = '100%', style}: SkeletonProps) {
-  return <View accessibilityRole="progressbar" style={[styles.base, {height, width}, style]} />;
+  return (
+    <View
+      accessibilityRole="progressbar"
+      style={[styles.base, {height, width}, style]}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
@@ -2010,6 +2151,7 @@ git commit -m "feat: tokens de diseño y componentes de UI compartidos"
 ## Task 7: Sesión — slice, api y persistencia
 
 **Files:**
+
 - Create: `src/services/session/sessionApi.ts`
 - Create: `src/services/session/sessionSlice.ts`
 - Create: `src/services/session/sessionListeners.ts`
@@ -2020,6 +2162,7 @@ git commit -m "feat: tokens de diseño y componentes de UI compartidos"
 - Test: `src/services/api/__tests__/baseApi.test.ts` (agregar los dos casos diferidos de la Task 5)
 
 **Interfaces:**
+
 - Consumes: `baseApi` y `unauthorized` de `@/services/api/*`; `storage`, `STORAGE_KEYS`, `Storage` de `@/services/storage`; `LoginRequest`, `LoginResponse`, `User` de `@/services/api/types`; `AppStartListening` de `@/app/listenerMiddleware`.
 - Produces:
   - `sessionApi` con `useLoginMutation()` y `useMeQuery()`; `sessionApi.endpoints.login.matchFulfilled`
@@ -2049,12 +2192,21 @@ import {createMemoryStorage, STORAGE_KEYS} from '@/services/storage';
 import type {User} from '@/services/api/types';
 
 import {sessionApi} from '../sessionApi';
-import sessionReducer, {restoreSession, sessionMissing, sessionRestored, signedOut} from '../sessionSlice';
+import sessionReducer, {
+  restoreSession,
+  sessionMissing,
+  sessionRestored,
+  signedOut,
+} from '../sessionSlice';
 import type {SessionState} from '../sessionSlice';
 
 const USER: User = {id: 'u-1', email: 'demo@catalog.dev', name: 'Demo User'};
 
-const initial: SessionState = {status: 'bootstrapping', accessToken: null, user: null};
+const initial: SessionState = {
+  status: 'bootstrapping',
+  accessToken: null,
+  user: null,
+};
 
 describe('sessionSlice', () => {
   it('arranca en bootstrapping', () => {
@@ -2062,7 +2214,10 @@ describe('sessionSlice', () => {
   });
 
   it('pasa a signedIn al restaurar una sesión', () => {
-    const state = sessionReducer(initial, sessionRestored({accessToken: 'tok', user: USER}));
+    const state = sessionReducer(
+      initial,
+      sessionRestored({accessToken: 'tok', user: USER}),
+    );
     expect(state).toEqual({status: 'signedIn', accessToken: 'tok', user: USER});
   });
 
@@ -2071,10 +2226,17 @@ describe('sessionSlice', () => {
   });
 
   it('pasa a signedIn cuando el login se resuelve', () => {
+    // `matchFulfilled` es un predicado, no un action creator: su `toString()`
+    // devuelve el código de la función, no el tipo. Se usa el tipo literal que
+    // RTK Query emite para una mutación bajo `reducerPath: 'api'`.
     const action = {
-      type: sessionApi.endpoints.login.matchFulfilled.toString(),
+      type: 'api/executeMutation/fulfilled',
       payload: {accessToken: 'tok', user: USER},
-      meta: {arg: {endpointName: 'login'}, requestId: 'r1', requestStatus: 'fulfilled'},
+      meta: {
+        arg: {endpointName: 'login'},
+        requestId: 'r1',
+        requestStatus: 'fulfilled',
+      },
     };
     const state = sessionReducer(initial, action);
     expect(state.status).toBe('signedIn');
@@ -2082,7 +2244,11 @@ describe('sessionSlice', () => {
   });
 
   it('limpia token y usuario en signedOut', () => {
-    const signedIn: SessionState = {status: 'signedIn', accessToken: 'tok', user: USER};
+    const signedIn: SessionState = {
+      status: 'signedIn',
+      accessToken: 'tok',
+      user: USER,
+    };
     expect(sessionReducer(signedIn, signedOut())).toEqual({
       status: 'signedOut',
       accessToken: null,
@@ -2091,7 +2257,11 @@ describe('sessionSlice', () => {
   });
 
   it('limpia la sesión cuando la API responde 401', () => {
-    const signedIn: SessionState = {status: 'signedIn', accessToken: 'tok', user: USER};
+    const signedIn: SessionState = {
+      status: 'signedIn',
+      accessToken: 'tok',
+      user: USER,
+    };
     expect(sessionReducer(signedIn, unauthorized())).toEqual({
       status: 'signedOut',
       accessToken: null,
@@ -2110,7 +2280,11 @@ describe('restoreSession', () => {
     const thunk = restoreSession({storage});
     await thunk(
       action => {
-        dispatched.push(typeof action === 'object' && action !== null && 'type' in action ? String(action.type) : '');
+        dispatched.push(
+          typeof action === 'object' && action !== null && 'type' in action
+            ? String(action.type)
+            : '',
+        );
         return action;
       },
       () => ({}),
@@ -2126,7 +2300,11 @@ describe('restoreSession', () => {
     const thunk = restoreSession({storage});
     await thunk(
       action => {
-        dispatched.push(typeof action === 'object' && action !== null && 'type' in action ? String(action.type) : '');
+        dispatched.push(
+          typeof action === 'object' && action !== null && 'type' in action
+            ? String(action.type)
+            : '',
+        );
         return action;
       },
       () => ({}),
@@ -2204,7 +2382,10 @@ const sessionSlice = createSlice({
   name: 'session',
   initialState,
   reducers: {
-    sessionRestored(state, action: PayloadAction<{accessToken: string; user: User}>) {
+    sessionRestored(
+      state,
+      action: PayloadAction<{accessToken: string; user: User}>,
+    ) {
       state.status = 'signedIn';
       state.accessToken = action.payload.accessToken;
       state.user = action.payload.user;
@@ -2213,19 +2394,25 @@ const sessionSlice = createSlice({
     signedOut: clear,
   },
   extraReducers: builder => {
+    // RTK exige que todos los `addCase` precedan a cualquier `addMatcher`:
+    // invertir el orden lanza en runtime al construir el slice.
     builder
+      .addCase(unauthorized, clear)
       // El login exitoso no necesita una acción propia: el slice reacciona al
       // resultado de la mutación de RTK Query. Una sola fuente de verdad.
-      .addMatcher(sessionApi.endpoints.login.matchFulfilled, (state, action) => {
-        state.status = 'signedIn';
-        state.accessToken = action.payload.accessToken;
-        state.user = action.payload.user;
-      })
-      .addCase(unauthorized, clear);
+      .addMatcher(
+        sessionApi.endpoints.login.matchFulfilled,
+        (state, action) => {
+          state.status = 'signedIn';
+          state.accessToken = action.payload.accessToken;
+          state.user = action.payload.user;
+        },
+      );
   },
 });
 
-export const {sessionMissing, sessionRestored, signedOut} = sessionSlice.actions;
+export const {sessionMissing, sessionRestored, signedOut} =
+  sessionSlice.actions;
 export default sessionSlice.reducer;
 
 /**
@@ -2233,7 +2420,9 @@ export default sessionSlice.reducer;
  * Se escribe como thunk a mano (no createAsyncThunk) porque no hay estados
  * pending/rejected que interesen: o hay sesión o no la hay.
  */
-export function restoreSession({storage = defaultStorage}: {storage?: Storage} = {}) {
+export function restoreSession({
+  storage = defaultStorage,
+}: {storage?: Storage} = {}) {
   return async (dispatch: (action: unknown) => unknown): Promise<void> => {
     const [token, rawUser] = await Promise.all([
       storage.getItem(STORAGE_KEYS.accessToken),
@@ -2246,7 +2435,12 @@ export function restoreSession({storage = defaultStorage}: {storage?: Storage} =
     }
 
     try {
-      dispatch(sessionRestored({accessToken: token, user: JSON.parse(rawUser) as User}));
+      dispatch(
+        sessionRestored({
+          accessToken: token,
+          user: JSON.parse(rawUser) as User,
+        }),
+      );
     } catch {
       dispatch(sessionMissing());
     }
@@ -2289,7 +2483,9 @@ import {signedOut} from './sessionSlice';
  * tienen que ser puros y síncronos, y escribir en AsyncStorage no es ninguna de
  * las dos cosas.
  */
-export function registerSessionListeners(startAppListening: AppStartListening): void {
+export function registerSessionListeners(
+  startAppListening: AppStartListening,
+): void {
   startAppListening({
     matcher: sessionApi.endpoints.login.matchFulfilled,
     effect: async action => {
@@ -2359,7 +2555,13 @@ export function useSession() {
 
 ```ts
 export {default as sessionReducer} from './sessionSlice';
-export {restoreSession, sessionMissing, sessionRestored, signedOut, signOut} from './sessionSlice';
+export {
+  restoreSession,
+  sessionMissing,
+  sessionRestored,
+  signedOut,
+  signOut,
+} from './sessionSlice';
 export type {SessionState} from './sessionSlice';
 export {sessionApi, useLoginMutation, useMeQuery} from './sessionApi';
 export {registerSessionListeners} from './sessionListeners';
@@ -2421,10 +2623,12 @@ git commit -m "feat: sesión con slice, RTK Query y persistencia por listener"
 ## Task 8: LoginScreen
 
 **Files:**
+
 - Create: `src/features/auth/screens/LoginScreen.tsx`
 - Test: `src/features/auth/__tests__/LoginScreen.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useSession` de `@/services/session`; `Button`, `Screen`, `TextField` de `@/components/ui`; `DEMO_PASSWORD`, `DEMO_USER` de `@/mocks/db` (solo bajo `__DEV__`).
 - Produces: `<LoginScreen />` — sin props. testIDs: `login-email`, `login-password`, `login-submit`, `login-error`.
 
@@ -2459,24 +2663,32 @@ describe('LoginScreen', () => {
   it('muestra un error cuando la contraseña es muy corta', async () => {
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', '123');
-    expect(await screen.findByText('La contraseña debe tener al menos 8 caracteres')).toBeVisible();
+    expect(
+      await screen.findByText('La contraseña debe tener al menos 8 caracteres'),
+    ).toBeVisible();
   });
 
   it('deja el estado en signedIn tras un login exitoso', async () => {
     const {store} = renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', 'password123');
-    await waitFor(() => expect(store.getState().session.status).toBe('signedIn'));
+    await waitFor(() =>
+      expect(store.getState().session.status).toBe('signedIn'),
+    );
     expect(store.getState().session.accessToken).toBe('demo-access-token');
   });
 
   it('muestra un mensaje de credenciales inválidas ante un 401', async () => {
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', 'incorrecta1');
-    expect(await screen.findByTestId('login-error')).toHaveTextContent('Email o contraseña incorrectos');
+    expect(await screen.findByTestId('login-error')).toHaveTextContent(
+      'Email o contraseña incorrectos',
+    );
   });
 
   it('diferencia el error de red del error de credenciales', async () => {
-    server.use(http.post(`${API_BASE_URL}/auth/login`, () => HttpResponse.error()));
+    server.use(
+      http.post(`${API_BASE_URL}/auth/login`, () => HttpResponse.error()),
+    );
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', 'password123');
     expect(await screen.findByTestId('login-error')).toHaveTextContent(
@@ -2593,7 +2805,12 @@ export function LoginScreen() {
           </Text>
         )}
 
-        <Button testID="login-submit" label="Ingresar" onPress={onSubmit} loading={isSigningIn} />
+        <Button
+          testID="login-submit"
+          label="Ingresar"
+          onPress={onSubmit}
+          loading={isSigningIn}
+        />
 
         {__DEV__ && (
           <Text style={styles.hint}>
@@ -2631,6 +2848,7 @@ git commit -m "feat: pantalla de login con validación y errores diferenciados"
 ## Task 9: Navegación y bootstrap de sesión
 
 **Files:**
+
 - Create: `src/navigation/types.ts`
 - Create: `src/navigation/AuthNavigator.tsx`
 - Create: `src/navigation/CatalogStack.tsx`
@@ -2645,6 +2863,7 @@ git commit -m "feat: pantalla de login con validación y errores diferenciados"
 - Test: `src/navigation/__tests__/RootNavigator.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useAppDispatch`, `useAppSelector`; `restoreSession` de `@/services/session`; `LoginScreen`.
 - Produces desde `@/navigation/types`:
   - `AuthStackParamList = {Login: undefined}`
@@ -2691,9 +2910,18 @@ export type RootStackParamList = {
   App: NavigatorScreenParams<AppTabParamList>;
 };
 
-export type ProductListScreenProps = NativeStackScreenProps<CatalogStackParamList, 'ProductList'>;
-export type ProductDetailScreenProps = NativeStackScreenProps<CatalogStackParamList, 'ProductDetail'>;
-export type FavoritesScreenProps = BottomTabScreenProps<AppTabParamList, 'FavoritesTab'>;
+export type ProductListScreenProps = NativeStackScreenProps<
+  CatalogStackParamList,
+  'ProductList'
+>;
+export type ProductDetailScreenProps = NativeStackScreenProps<
+  CatalogStackParamList,
+  'ProductDetail'
+>;
+export type FavoritesScreenProps = BottomTabScreenProps<
+  AppTabParamList,
+  'FavoritesTab'
+>;
 
 /**
  * Registrar el ParamList raíz a nivel global hace que `navigation.navigate()`
@@ -2767,8 +2995,16 @@ const Stack = createNativeStackNavigator<CatalogStackParamList>();
 export function CatalogStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="ProductList" component={ProductListScreen} options={{title: 'Catálogo'}} />
-      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{title: 'Detalle'}} />
+      <Stack.Screen
+        name="ProductList"
+        component={ProductListScreen}
+        options={{title: 'Catálogo'}}
+      />
+      <Stack.Screen
+        name="ProductDetail"
+        component={ProductDetailScreen}
+        options={{title: 'Detalle'}}
+      />
     </Stack.Navigator>
   );
 }
@@ -2797,8 +3033,16 @@ export function AppTabs() {
         component={CatalogStack}
         options={{title: 'Catálogo', headerShown: false}}
       />
-      <Tab.Screen name="FavoritesTab" component={FavoritesScreen} options={{title: 'Favoritos'}} />
-      <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{title: 'Perfil'}} />
+      <Tab.Screen
+        name="FavoritesTab"
+        component={FavoritesScreen}
+        options={{title: 'Favoritos'}}
+      />
+      <Tab.Screen
+        name="ProfileTab"
+        component={ProfileScreen}
+        options={{title: 'Perfil'}}
+      />
     </Tab.Navigator>
   );
 }
@@ -2853,7 +3097,12 @@ export function RootNavigator() {
 }
 
 const styles = StyleSheet.create({
-  splash: {flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background},
+  splash: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
 });
 ```
 
@@ -2978,6 +3227,7 @@ git commit -m "feat: navegación tipada con bootstrap de sesión y tabs"
 ## Task 10: Feature catalog — api, slice y selectors
 
 **Files:**
+
 - Create: `src/features/catalog/catalogApi.ts`
 - Create: `src/services/api/productsApi.ts`
 - Create: `src/features/catalog/catalogSlice.ts`
@@ -2989,8 +3239,10 @@ git commit -m "feat: navegación tipada con bootstrap de sesión y tabs"
 - Test: `src/services/api/__tests__/productsApi.test.ts`
 
 **Interfaces:**
+
 - Consumes: `baseApi`; `PAGE_SIZE`; `Product`, `ProductsPage`, `ProductsQueryArgs`, `Category`, `SortOption`; `RootState`.
 - Produces:
+
   - `catalogApi` con `useGetProductsInfiniteQuery(args: ProductsQueryArgs)`
   - `productsApi` con `useGetProductQuery(id: string)` desde `@/services/api/productsApi`
   - `catalogReducer` (default), acciones `queryChanged(string)`, `categoryChanged(Category | 'all')`, `sortChanged(SortOption)`, `filtersReset()`
@@ -3019,19 +3271,29 @@ describe('catalogSlice', () => {
   });
 
   it('actualiza la query', () => {
-    expect(catalogReducer(initial, queryChanged('nimbus')).query).toBe('nimbus');
+    expect(catalogReducer(initial, queryChanged('nimbus')).query).toBe(
+      'nimbus',
+    );
   });
 
   it('actualiza la categoría', () => {
-    expect(catalogReducer(initial, categoryChanged('audio')).category).toBe('audio');
+    expect(catalogReducer(initial, categoryChanged('audio')).category).toBe(
+      'audio',
+    );
   });
 
   it('actualiza el orden', () => {
-    expect(catalogReducer(initial, sortChanged('price_desc')).sort).toBe('price_desc');
+    expect(catalogReducer(initial, sortChanged('price_desc')).sort).toBe(
+      'price_desc',
+    );
   });
 
   it('resetea todos los filtros', () => {
-    const dirty: CatalogState = {query: 'x', category: 'gaming', sort: 'price_asc'};
+    const dirty: CatalogState = {
+      query: 'x',
+      category: 'gaming',
+      sort: 'price_asc',
+    };
     expect(catalogReducer(dirty, filtersReset())).toEqual(initial);
   });
 });
@@ -3087,7 +3349,8 @@ const catalogSlice = createSlice({
   },
 });
 
-export const {categoryChanged, filtersReset, queryChanged, sortChanged} = catalogSlice.actions;
+export const {categoryChanged, filtersReset, queryChanged, sortChanged} =
+  catalogSlice.actions;
 export default catalogSlice.reducer;
 ```
 
@@ -3184,7 +3447,10 @@ export const selectProductsQueryArgs = createSelector(
 
 export const selectHasActiveFilters = createSelector(
   [selectCatalog],
-  catalog => catalog.query.trim() !== '' || catalog.category !== 'all' || catalog.sort !== 'name',
+  catalog =>
+    catalog.query.trim() !== '' ||
+    catalog.category !== 'all' ||
+    catalog.sort !== 'name',
 );
 ```
 
@@ -3222,7 +3488,8 @@ describe('catalogApi', () => {
       catalogApi.endpoints.getProducts.initiate(ARGS, {direction: 'forward'}),
     );
     expect(result.data?.pages).toHaveLength(2);
-    const ids = result.data?.pages.flatMap(page => page.items.map(item => item.id)) ?? [];
+    const ids =
+      result.data?.pages.flatMap(page => page.items.map(item => item.id)) ?? [];
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -3259,7 +3526,11 @@ type PageParam = string | null;
 
 export const catalogApi = baseApi.injectEndpoints({
   endpoints: build => ({
-    getProducts: build.infiniteQuery<ProductsPage, ProductsQueryArgs, PageParam>({
+    getProducts: build.infiniteQuery<
+      ProductsPage,
+      ProductsQueryArgs,
+      PageParam
+    >({
       infiniteQueryOptions: {
         initialPageParam: null,
         // Devolver `undefined` corta el paginado: es lo que apaga `hasNextPage`.
@@ -3300,14 +3571,18 @@ import {productsApi} from '../productsApi';
 describe('productsApi', () => {
   it('trae un producto por id', async () => {
     const store = makeStore();
-    const result = await store.dispatch(productsApi.endpoints.getProduct.initiate('p-001'));
+    const result = await store.dispatch(
+      productsApi.endpoints.getProduct.initiate('p-001'),
+    );
     expect(result.data?.id).toBe('p-001');
     expect(result.data?.name).toBe('Auriculares Nimbus');
   });
 
   it('expone el error cuando el producto no existe', async () => {
     const store = makeStore();
-    const result = await store.dispatch(productsApi.endpoints.getProduct.initiate('no-existe'));
+    const result = await store.dispatch(
+      productsApi.endpoints.getProduct.initiate('no-existe'),
+    );
     expect(result.error).toBeDefined();
   });
 });
@@ -3358,6 +3633,7 @@ git commit -m "feat: catalogApi con infiniteQuery, productsApi, slice de filtros
 ## Task 11: Debounce, SearchBar y CategoryFilter
 
 **Files:**
+
 - Create: `src/features/catalog/hooks/useDebouncedValue.ts`
 - Create: `src/features/catalog/components/SearchBar.tsx`
 - Create: `src/features/catalog/components/CategoryFilter.tsx`
@@ -3366,8 +3642,10 @@ git commit -m "feat: catalogApi con infiniteQuery, productsApi, slice de filtros
 - Test: `src/features/catalog/__tests__/SearchBar.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `queryChanged`, `categoryChanged`, `sortChanged`; `useAppDispatch`, `useAppSelector`; `CATEGORIES`.
 - Produces:
+
   - `useDebouncedValue<T>(value: T, delayMs: number): T`
   - `<SearchBar />` — sin props; testID `search-input`
   - `<CategoryFilter />` — sin props; testID por categoría `category-<name>` y `category-all`
@@ -3392,9 +3670,12 @@ describe('useDebouncedValue', () => {
   });
 
   it('no actualiza antes de que pase el delay', () => {
-    const {rerender, result} = renderHook(({value}) => useDebouncedValue(value, 300), {
-      initialProps: {value: 'a'},
-    });
+    const {rerender, result} = renderHook(
+      ({value}) => useDebouncedValue(value, 300),
+      {
+        initialProps: {value: 'a'},
+      },
+    );
     rerender({value: 'b'});
     act(() => {
       jest.advanceTimersByTime(299);
@@ -3403,9 +3684,12 @@ describe('useDebouncedValue', () => {
   });
 
   it('actualiza una vez cumplido el delay', () => {
-    const {rerender, result} = renderHook(({value}) => useDebouncedValue(value, 300), {
-      initialProps: {value: 'a'},
-    });
+    const {rerender, result} = renderHook(
+      ({value}) => useDebouncedValue(value, 300),
+      {
+        initialProps: {value: 'a'},
+      },
+    );
     rerender({value: 'b'});
     act(() => {
       jest.advanceTimersByTime(300);
@@ -3414,9 +3698,12 @@ describe('useDebouncedValue', () => {
   });
 
   it('colapsa varios cambios rápidos en una sola actualización', () => {
-    const {rerender, result} = renderHook(({value}) => useDebouncedValue(value, 300), {
-      initialProps: {value: 'a'},
-    });
+    const {rerender, result} = renderHook(
+      ({value}) => useDebouncedValue(value, 300),
+      {
+        initialProps: {value: 'a'},
+      },
+    );
     rerender({value: 'b'});
     act(() => {
       jest.advanceTimersByTime(100);
@@ -3636,7 +3923,9 @@ export function CategoryFilter() {
             accessibilityState={{selected: active}}
             onPress={() => onSelect(option)}
             style={[styles.chip, active && styles.chipActive]}>
-            <Text style={[styles.label, active && styles.labelActive]}>{LABELS[option]}</Text>
+            <Text style={[styles.label, active && styles.labelActive]}>
+              {LABELS[option]}
+            </Text>
           </Pressable>
         );
       })}
@@ -3645,7 +3934,11 @@ export function CategoryFilter() {
 }
 
 const styles = StyleSheet.create({
-  row: {gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm},
+  row: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
   chip: {
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
@@ -3682,7 +3975,10 @@ export function SortControl() {
   const dispatch = useAppDispatch();
   const selected = useAppSelector(state => state.catalog.sort);
 
-  const onSelect = useCallback((value: SortOption) => dispatch(sortChanged(value)), [dispatch]);
+  const onSelect = useCallback(
+    (value: SortOption) => dispatch(sortChanged(value)),
+    [dispatch],
+  );
 
   return (
     <View style={styles.row}>
@@ -3696,7 +3992,9 @@ export function SortControl() {
             accessibilityState={{selected: active}}
             onPress={() => onSelect(option.value)}
             style={[styles.chip, active && styles.chipActive]}>
-            <Text style={[styles.label, active && styles.labelActive]}>{option.label}</Text>
+            <Text style={[styles.label, active && styles.labelActive]}>
+              {option.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -3705,7 +4003,12 @@ export function SortControl() {
 }
 
 const styles = StyleSheet.create({
-  row: {flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.sm},
+  row: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
   chip: {
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
@@ -3732,14 +4035,17 @@ git commit -m "feat: búsqueda con debounce, filtro por categoría y control de 
 ## Task 12: ProductCard y ProductListScreen
 
 **Files:**
+
 - Create: `src/features/catalog/components/ProductCard.tsx`
 - Create: `src/features/catalog/components/ProductListSkeleton.tsx`
 - Replace: `src/features/catalog/screens/ProductListScreen.tsx` (era placeholder)
 - Test: `src/features/catalog/__tests__/ProductListScreen.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useGetProductsInfiniteQuery`; `selectProductsQueryArgs`, `selectHasActiveFilters`; `SearchBar`, `CategoryFilter`, `SortControl`; `EmptyState`, `ErrorView`, `Screen`, `Skeleton`; `formatPrice`; `ProductListScreenProps`.
 - Produces:
+
   - `PRODUCT_CARD_HEIGHT = 96` (exportada, la usa `getItemLayout`)
   - `<ProductCard product onPress />` — `{product: Product; onPress: (id: string) => void}`; memoizado con `React.memo`; testID `product-card-<id>`
   - `<ProductListScreen navigation />`; testIDs `product-list`, `list-skeleton`
@@ -3762,7 +4068,12 @@ import {ProductListScreen} from '../screens/ProductListScreen';
 const navigation = {navigate: jest.fn()} as never;
 
 function renderScreen() {
-  return renderWithProviders(<ProductListScreen navigation={navigation} route={{key: 'k', name: 'ProductList'} as never} />);
+  return renderWithProviders(
+    <ProductListScreen
+      navigation={navigation}
+      route={{key: 'k', name: 'ProductList'} as never}
+    />,
+  );
 }
 
 describe('ProductListScreen', () => {
@@ -3782,7 +4093,9 @@ describe('ProductListScreen', () => {
   it('filtra la lista al buscar', async () => {
     jest.useFakeTimers();
     renderScreen();
-    await waitFor(() => expect(screen.getByTestId('product-list')).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByTestId('product-list')).toBeVisible(),
+    );
 
     fireEvent.changeText(screen.getByTestId('search-input'), 'Gamepad');
     act(() => {
@@ -3797,7 +4110,9 @@ describe('ProductListScreen', () => {
   it('muestra el estado vacío cuando no hay coincidencias', async () => {
     jest.useFakeTimers();
     renderScreen();
-    await waitFor(() => expect(screen.getByTestId('product-list')).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByTestId('product-list')).toBeVisible(),
+    );
 
     fireEvent.changeText(screen.getByTestId('search-input'), 'zzzznoexiste');
     act(() => {
@@ -3821,7 +4136,9 @@ describe('ProductListScreen', () => {
   it('navega al detalle al tocar un producto', async () => {
     renderScreen();
     fireEvent.press(await screen.findByTestId('product-card-p-005'));
-    expect(navigation.navigate).toHaveBeenCalledWith('ProductDetail', {productId: 'p-005'});
+    expect(navigation.navigate).toHaveBeenCalledWith('ProductDetail', {
+      productId: 'p-005',
+    });
   });
 });
 ```
@@ -3854,7 +4171,10 @@ interface ProductCardProps {
 }
 
 function ProductCardComponent({product, onPress}: ProductCardProps) {
-  const handlePress = useCallback(() => onPress(product.id), [onPress, product.id]);
+  const handlePress = useCallback(
+    () => onPress(product.id),
+    [onPress, product.id],
+  );
 
   return (
     <Pressable
@@ -4004,7 +4324,10 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
     return (
       <Screen>
         {header}
-        <ErrorView message="No pudimos cargar el catálogo." onRetry={() => void refetch()} />
+        <ErrorView
+          message="No pudimos cargar el catálogo."
+          onRetry={() => void refetch()}
+        />
       </Screen>
     );
   }
@@ -4025,7 +4348,9 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
           onEndReachedThreshold={0.5}
           refreshing={isFetching && !isFetchingNextPage}
           onRefresh={() => void refetch()}
-          contentContainerStyle={products.length === 0 ? styles.emptyContainer : styles.list}
+          contentContainerStyle={
+            products.length === 0 ? styles.emptyContainer : styles.list
+          }
           ListEmptyComponent={
             <EmptyState
               title="Sin resultados"
@@ -4079,6 +4404,7 @@ git commit -m "feat: lista de productos con paginado infinito, filtros y memoiza
 ## Task 13: Favoritos
 
 **Files:**
+
 - Create: `src/services/favorites/favoritesSlice.ts`
 - Create: `src/services/favorites/selectors.ts`
 - Create: `src/services/favorites/favoritesListeners.ts`
@@ -4091,6 +4417,7 @@ git commit -m "feat: lista de productos con paginado infinito, filtros y memoiza
 - Test: `src/features/favorites/__tests__/FavoritesScreen.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `storage`, `STORAGE_KEYS`; `AppStartListening`; `useGetProductQuery` de `@/services/api/productsApi`.
 - Produces desde `@/services/favorites`:
   - `favoritesReducer` (default del slice), `favoriteToggled(id: string)`, `favoritesRestored(ids: string[])`
@@ -4109,7 +4436,11 @@ git commit -m "feat: lista de productos con paginado infinito, filtros y memoiza
 ```ts
 import {createMemoryStorage, STORAGE_KEYS} from '@/services/storage';
 
-import favoritesReducer, {favoriteToggled, favoritesRestored, restoreFavorites} from '../favoritesSlice';
+import favoritesReducer, {
+  favoriteToggled,
+  favoritesRestored,
+  restoreFavorites,
+} from '../favoritesSlice';
 import type {FavoritesState} from '../favoritesSlice';
 
 const empty: FavoritesState = {ids: []};
@@ -4120,12 +4451,16 @@ describe('favoritesSlice', () => {
   });
 
   it('agrega un id que no estaba', () => {
-    expect(favoritesReducer(empty, favoriteToggled('p-001')).ids).toEqual(['p-001']);
+    expect(favoritesReducer(empty, favoriteToggled('p-001')).ids).toEqual([
+      'p-001',
+    ]);
   });
 
   it('quita un id que ya estaba', () => {
     const state: FavoritesState = {ids: ['p-001', 'p-002']};
-    expect(favoritesReducer(state, favoriteToggled('p-001')).ids).toEqual(['p-002']);
+    expect(favoritesReducer(state, favoriteToggled('p-001')).ids).toEqual([
+      'p-002',
+    ]);
   });
 
   it('no duplica ids', () => {
@@ -4138,10 +4473,9 @@ describe('favoritesSlice', () => {
 
   it('reemplaza la lista al restaurar', () => {
     const state: FavoritesState = {ids: ['p-009']};
-    expect(favoritesReducer(state, favoritesRestored(['p-001', 'p-002'])).ids).toEqual([
-      'p-001',
-      'p-002',
-    ]);
+    expect(
+      favoritesReducer(state, favoritesRestored(['p-001', 'p-002'])).ids,
+    ).toEqual(['p-001', 'p-002']);
   });
 });
 
@@ -4218,7 +4552,9 @@ const favoritesSlice = createSlice({
 export const {favoriteToggled, favoritesRestored} = favoritesSlice.actions;
 export default favoritesSlice.reducer;
 
-export function restoreFavorites({storage = defaultStorage}: {storage?: Storage} = {}) {
+export function restoreFavorites({
+  storage = defaultStorage,
+}: {storage?: Storage} = {}) {
   return async (dispatch: (action: unknown) => unknown): Promise<void> => {
     const raw = await storage.getItem(STORAGE_KEYS.favorites);
     if (raw == null) {
@@ -4227,7 +4563,9 @@ export function restoreFavorites({storage = defaultStorage}: {storage?: Storage}
     }
     try {
       const parsed: unknown = JSON.parse(raw);
-      const ids = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+      const ids = Array.isArray(parsed)
+        ? parsed.filter((id): id is string => typeof id === 'string')
+        : [];
       dispatch(favoritesRestored(ids));
     } catch {
       // Storage corrupto no debe romper el arranque de la app.
@@ -4244,7 +4582,8 @@ export function restoreFavorites({storage = defaultStorage}: {storage?: Storage}
 ```ts
 import type {RootState} from '@/app/store';
 
-export const selectFavoriteIds = (state: RootState): string[] => state.favorites.ids;
+export const selectFavoriteIds = (state: RootState): string[] =>
+  state.favorites.ids;
 
 /**
  * Selector con parámetro: devuelve un boolean (primitivo), así que no hace falta
@@ -4252,8 +4591,10 @@ export const selectFavoriteIds = (state: RootState): string[] => state.favorites
  * identidad sin cambiar de valor. Memoizarlo sería puro costo. (Spec §5,
  * contrapunto: saber cuándo *no* memoizar.)
  */
-export const selectIsFavorite = (state: RootState, productId: string): boolean =>
-  state.favorites.ids.includes(productId);
+export const selectIsFavorite = (
+  state: RootState,
+  productId: string,
+): boolean => state.favorites.ids.includes(productId);
 ```
 
 `src/services/favorites/favoritesListeners.ts`:
@@ -4264,7 +4605,9 @@ import {storage, STORAGE_KEYS} from '@/services/storage';
 
 import {favoriteToggled} from './favoritesSlice';
 
-export function registerFavoritesListeners(startAppListening: AppStartListening): void {
+export function registerFavoritesListeners(
+  startAppListening: AppStartListening,
+): void {
   startAppListening({
     actionCreator: favoriteToggled,
     effect: async (_action, api) => {
@@ -4279,7 +4622,11 @@ export function registerFavoritesListeners(startAppListening: AppStartListening)
 
 ```ts
 export {default as favoritesReducer} from './favoritesSlice';
-export {favoriteToggled, favoritesRestored, restoreFavorites} from './favoritesSlice';
+export {
+  favoriteToggled,
+  favoritesRestored,
+  restoreFavorites,
+} from './favoritesSlice';
 export type {FavoritesState} from './favoritesSlice';
 export {registerFavoritesListeners} from './favoritesListeners';
 export {selectFavoriteIds, selectIsFavorite} from './selectors';
@@ -4312,7 +4659,9 @@ interface FavoriteButtonProps {
 
 export function FavoriteButton({productId}: FavoriteButtonProps) {
   const dispatch = useAppDispatch();
-  const isFavorite = useAppSelector(state => selectIsFavorite(state, productId));
+  const isFavorite = useAppSelector(state =>
+    selectIsFavorite(state, productId),
+  );
 
   const onPress = useCallback(() => {
     dispatch(favoriteToggled(productId));
@@ -4322,11 +4671,15 @@ export function FavoriteButton({productId}: FavoriteButtonProps) {
     <Pressable
       testID={`favorite-${productId}`}
       accessibilityRole="button"
-      accessibilityLabel={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+      accessibilityLabel={
+        isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'
+      }
       accessibilityState={{selected: isFavorite}}
       onPress={onPress}
       style={styles.button}>
-      <Text style={[styles.icon, isFavorite && styles.iconActive]}>{isFavorite ? '♥' : '♡'}</Text>
+      <Text style={[styles.icon, isFavorite && styles.iconActive]}>
+        {isFavorite ? '♥' : '♡'}
+      </Text>
     </Pressable>
   );
 }
@@ -4469,10 +4822,12 @@ git commit -m "feat: favoritos persistidos por id resueltos desde el cache de RT
 ## Task 14: ProductDetailScreen
 
 **Files:**
+
 - Replace: `src/features/catalog/screens/ProductDetailScreen.tsx` (era placeholder)
 - Test: `src/features/catalog/__tests__/ProductDetailScreen.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useGetProductQuery` de `@/services/api/productsApi`; `FavoriteButton`, `ErrorView`, `Screen`, `Skeleton`; `formatPrice`; `ProductDetailScreenProps`.
 - Produces: `<ProductDetailScreen route navigation />`; testIDs `detail-skeleton`, `detail-name`, `detail-stock`.
 
@@ -4492,7 +4847,10 @@ import {renderWithProviders} from '@/test/renderWithProviders';
 
 import {ProductDetailScreen} from '../screens/ProductDetailScreen';
 
-function renderDetail(productId: string, store?: ReturnType<typeof renderWithProviders>['store']) {
+function renderDetail(
+  productId: string,
+  store?: ReturnType<typeof renderWithProviders>['store'],
+) {
   return renderWithProviders(
     <ProductDetailScreen
       route={{key: 'k', name: 'ProductDetail', params: {productId}} as never}
@@ -4510,7 +4868,9 @@ describe('ProductDetailScreen', () => {
 
   it('muestra los datos del producto', async () => {
     renderDetail('p-001');
-    expect(await screen.findByTestId('detail-name')).toHaveTextContent('Auriculares Nimbus');
+    expect(await screen.findByTestId('detail-name')).toHaveTextContent(
+      'Auriculares Nimbus',
+    );
     expect(screen.getByText('$19.99')).toBeVisible();
   });
 
@@ -4521,7 +4881,9 @@ describe('ProductDetailScreen', () => {
     renderDetail('p-001', store);
     // Sin pasar por el skeleton: el dato ya estaba.
     expect(screen.queryByTestId('detail-skeleton')).toBeNull();
-    expect(screen.getByTestId('detail-name')).toHaveTextContent('Auriculares Nimbus');
+    expect(screen.getByTestId('detail-name')).toHaveTextContent(
+      'Auriculares Nimbus',
+    );
   });
 
   it('alterna el favorito', async () => {
@@ -4571,7 +4933,12 @@ export function ProductDetailScreen({route}: ProductDetailScreenProps) {
    * poblado en el primer render y RTK Query revalida en background. Es el
    * comportamiento que hace que la navegación se sienta instantánea.
    */
-  const {data: product, error, isLoading, refetch} = useGetProductQuery(productId);
+  const {
+    data: product,
+    error,
+    isLoading,
+    refetch,
+  } = useGetProductQuery(productId);
 
   if (isLoading) {
     return (
@@ -4588,7 +4955,10 @@ export function ProductDetailScreen({route}: ProductDetailScreenProps) {
   if (error != null || product == null) {
     return (
       <Screen>
-        <ErrorView message="No pudimos cargar el producto." onRetry={() => void refetch()} />
+        <ErrorView
+          message="No pudimos cargar el producto."
+          onRetry={() => void refetch()}
+        />
       </Screen>
     );
   }
@@ -4598,7 +4968,8 @@ export function ProductDetailScreen({route}: ProductDetailScreenProps) {
   // en useMemo costaría más que recalcularlo —el hook guarda el array de
   // dependencias y lo compara en cada render— y agregaría ruido al leerlo.
   // La memoización se justifica por costo medido, no por reflejo.
-  const availability = product.stock > 0 ? `${product.stock} en stock` : 'Sin stock';
+  const availability =
+    product.stock > 0 ? `${product.stock} en stock` : 'Sin stock';
 
   return (
     <Screen scroll>
@@ -4622,7 +4993,12 @@ export function ProductDetailScreen({route}: ProductDetailScreenProps) {
 
 const styles = StyleSheet.create({
   skeleton: {gap: spacing.md},
-  image: {width: '100%', height: 240, borderRadius: radius.md, backgroundColor: colors.surface},
+  image: {
+    width: '100%',
+    height: 240,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -4633,7 +5009,12 @@ const styles = StyleSheet.create({
   name: {...typography.title, color: colors.text, flex: 1},
   price: {...typography.heading, color: colors.primary, marginTop: spacing.xs},
   meta: {...typography.caption, color: colors.textMuted, marginTop: spacing.xs},
-  description: {...typography.body, color: colors.text, marginTop: spacing.md, lineHeight: 22},
+  description: {
+    ...typography.body,
+    color: colors.text,
+    marginTop: spacing.md,
+    lineHeight: 22,
+  },
 });
 ```
 
@@ -4655,6 +5036,7 @@ git commit -m "feat: detalle de producto sobre el cache de RTK Query con toggle 
 ## Task 15: Perfil y Performance Lab
 
 **Files:**
+
 - Replace: `src/features/profile/screens/ProfileScreen.tsx` (era placeholder)
 - Create: `src/features/profile/screens/PerformanceLabScreen.tsx`
 - Create: `src/navigation/ProfileStack.tsx`
@@ -4664,8 +5046,10 @@ git commit -m "feat: detalle de producto sobre el cache de RTK Query con toggle 
 - Test: `src/features/profile/__tests__/PerformanceLabScreen.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useSession` de `@/services/session`; `Button`, `Screen`.
 - Produces:
+
   - `ProfileStackParamList = {Profile: undefined; PerformanceLab: undefined}`
   - `<ProfileScreen navigation />`; testIDs `profile-email`, `profile-logout`, `profile-open-lab`
   - `<PerformanceLabScreen />`; testIDs `lab-input`, `lab-render-count-plain-<i>`, `lab-render-count-memo-<i>`, `lab-parent-renders`
@@ -4680,7 +5064,10 @@ export type ProfileStackParamList = {
   PerformanceLab: undefined;
 };
 
-export type ProfileScreenProps = NativeStackScreenProps<ProfileStackParamList, 'Profile'>;
+export type ProfileScreenProps = NativeStackScreenProps<
+  ProfileStackParamList,
+  'Profile'
+>;
 ```
 
 y cambiar `AppTabParamList` para que `ProfileTab` sea `NavigatorScreenParams<ProfileStackParamList>`.
@@ -4710,7 +5097,10 @@ const signedIn = {
 
 function renderProfile() {
   return renderWithProviders(
-    <ProfileScreen navigation={navigation} route={{key: 'k', name: 'Profile'} as never} />,
+    <ProfileScreen
+      navigation={navigation}
+      route={{key: 'k', name: 'Profile'} as never}
+    />,
     {preloadedState: signedIn},
   );
 }
@@ -4720,7 +5110,9 @@ describe('ProfileScreen', () => {
 
   it('muestra los datos del usuario', () => {
     renderProfile();
-    expect(screen.getByTestId('profile-email')).toHaveTextContent('demo@catalog.dev');
+    expect(screen.getByTestId('profile-email')).toHaveTextContent(
+      'demo@catalog.dev',
+    );
     expect(screen.getByText('Demo User')).toBeVisible();
   });
 
@@ -4732,7 +5124,9 @@ describe('ProfileScreen', () => {
 
     fireEvent.press(screen.getByTestId('profile-logout'));
 
-    await waitFor(() => expect(store.getState().session.status).toBe('signedOut'));
+    await waitFor(() =>
+      expect(store.getState().session.status).toBe('signedOut'),
+    );
     expect(store.getState().session.accessToken).toBeNull();
     expect(Object.keys(store.getState().api.queries)).toHaveLength(0);
   });
@@ -4782,7 +5176,11 @@ export function ProfileScreen({navigation}: ProfileScreenProps) {
           variant="ghost"
           onPress={() => navigation.navigate('PerformanceLab')}
         />
-        <Button testID="profile-logout" label="Cerrar sesión" onPress={signOut} />
+        <Button
+          testID="profile-logout"
+          label="Cerrar sesión"
+          onPress={signOut}
+        />
       </View>
     </Screen>
   );
@@ -4814,8 +5212,12 @@ import {PerformanceLabScreen} from '../screens/PerformanceLabScreen';
 describe('PerformanceLabScreen', () => {
   it('arranca con todas las filas en 1 render', () => {
     render(<PerformanceLabScreen />);
-    expect(screen.getByTestId('lab-render-count-plain-0')).toHaveTextContent('1');
-    expect(screen.getByTestId('lab-render-count-memo-0')).toHaveTextContent('1');
+    expect(screen.getByTestId('lab-render-count-plain-0')).toHaveTextContent(
+      '1',
+    );
+    expect(screen.getByTestId('lab-render-count-memo-0')).toHaveTextContent(
+      '1',
+    );
   });
 
   it('re-renderiza las filas sin memoizar al tipear, y no las memoizadas', () => {
@@ -4823,8 +5225,12 @@ describe('PerformanceLabScreen', () => {
     fireEvent.changeText(screen.getByTestId('lab-input'), 'a');
     fireEvent.changeText(screen.getByTestId('lab-input'), 'ab');
 
-    expect(screen.getByTestId('lab-render-count-plain-0')).toHaveTextContent('3');
-    expect(screen.getByTestId('lab-render-count-memo-0')).toHaveTextContent('1');
+    expect(screen.getByTestId('lab-render-count-plain-0')).toHaveTextContent(
+      '3',
+    );
+    expect(screen.getByTestId('lab-render-count-memo-0')).toHaveTextContent(
+      '1',
+    );
   });
 
   it('cuenta los renders del padre', () => {
@@ -4853,7 +5259,10 @@ import {ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {Screen} from '@/components/ui';
 import {colors, radius, spacing, typography} from '@/theme/tokens';
 
-const ROWS = Array.from({length: 8}, (_, index) => ({id: index, label: `Fila ${index + 1}`}));
+const ROWS = Array.from({length: 8}, (_, index) => ({
+  id: index,
+  label: `Fila ${index + 1}`,
+}));
 
 interface RowProps {
   label: string;
@@ -4875,7 +5284,9 @@ function Row({label, index, variant, onPress}: RowProps) {
   return (
     <View style={styles.row} onTouchEnd={() => onPress(index)}>
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text testID={`lab-render-count-${variant}-${index}`} style={styles.badge}>
+      <Text
+        testID={`lab-render-count-${variant}-${index}`}
+        style={styles.badge}>
         {renders.current}
       </Text>
     </View>
@@ -4952,11 +5363,12 @@ export function PerformanceLabScreen() {
         </View>
 
         <Text style={styles.explainer}>
-          Cada tecla re-renderiza esta pantalla. La columna izquierda vuelve a renderizar sus 8
-          filas porque `onPress` cambia de identidad; la derecha no renderiza ninguna porque
-          `React.memo` + `useCallback` mantienen las props estables. Con 8 filas la diferencia es
-          irrelevante: el punto es que con 800 deja de serlo, y que memoizar sin medir es
-          adivinar.
+          Cada tecla re-renderiza esta pantalla. La columna izquierda vuelve a
+          renderizar sus 8 filas porque `onPress` cambia de identidad; la
+          derecha no renderiza ninguna porque `React.memo` + `useCallback`
+          mantienen las props estables. Con 8 filas la diferencia es
+          irrelevante: el punto es que con 800 deja de serlo, y que memoizar sin
+          medir es adivinar.
         </Text>
       </ScrollView>
     </Screen>
@@ -5016,7 +5428,11 @@ const Stack = createNativeStackNavigator<ProfileStackParamList>();
 export function ProfileStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="Profile" component={ProfileScreen} options={{title: 'Perfil'}} />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{title: 'Perfil'}}
+      />
       <Stack.Screen
         name="PerformanceLab"
         component={PerformanceLabScreen}
@@ -5047,11 +5463,13 @@ git commit -m "feat: perfil con logout y Performance Lab con contador de renders
 ## Task 16: Documentación y verificación final
 
 **Files:**
+
 - Create: `CLAUDE.md`
 - Create: `README.md`
 - Modify: `docs/superpowers/specs/2026-08-30-rn-product-catalog-design.md` (estado → implementado)
 
 **Interfaces:**
+
 - Consumes: todo lo anterior.
 - Produces: documentación. Sin código nuevo.
 
@@ -5085,25 +5503,25 @@ Secciones obligatorias:
 
 Cada fila apunta a un archivo concreto. Verificar que cada ruta existe antes de dar la task por cerrada.
 
-| Tema | Dónde está | Respuesta corta |
-|---|---|---|
-| New Architecture | `android/gradle.properties`, `ios/Podfile` | Fabric + TurboModules activos por defecto desde RN 0.76; renderer en C++, sin el bridge asíncrono. |
-| Memoización nivel 1 | `src/features/catalog/screens/ProductListScreen.tsx` | `useMemo` para aplanar páginas, `useCallback` en `renderItem`/`keyExtractor`, `React.memo` en la fila. Las tres solo sirven juntas. |
-| Memoización nivel 2 | `src/features/catalog/selectors.ts` | `createSelector`: un selector que devuelve un objeto nuevo re-renderiza en cada dispatch. |
-| Memoización nivel 3 | `src/features/profile/screens/PerformanceLabScreen.tsx` | Contador de renders por fila: la diferencia se ve, no se explica. |
-| Cuándo NO memoizar | `src/features/catalog/screens/ProductDetailScreen.tsx` | Cálculo barato sin `useMemo`, con el porqué en un comentario. |
-| Custom hook con cleanup | `src/features/catalog/hooks/useDebouncedValue.ts` | El `return` del `useEffect` es lo que evita timers colgados. |
-| RTK Query vs. Context | `src/services/api/baseApi.ts`, `src/features/catalog/catalogApi.ts` | Cache, tags, dedupe y estados de carga gratis; Context no es un sistema de cache. |
-| Estado servidor vs. cliente | `src/features/catalog/catalogSlice.ts` | El slice guarda filtros, no productos. |
-| Paginado infinito | `src/features/catalog/catalogApi.ts` | `infiniteQuery` con cursor; `getNextPageParam` devuelve `undefined` para cortar. |
-| Navegación tipada | `src/navigation/types.ts` | `ParamList` + `declare global` en `ReactNavigation.RootParamList`. |
-| Manejo de 401 | `src/services/api/baseApi.ts`, `src/services/api/sessionEvents.ts` | Wrapper del baseQuery que despacha un evento neutral; evita que services dependa de features. |
-| Seguridad del token | `src/services/storage/asyncStorage.ts` | AsyncStorage no está cifrado; en producción va Keychain. Está detrás de una interfaz para cambiarlo en un archivo (ADR-003). |
-| Persistencia sin ensuciar reducers | `src/services/session/`, `src/services/favorites/favoritesListeners.ts` | `createListenerMiddleware`: los reducers quedan puros y síncronos. |
-| MSW | `src/mocks/` | Intercepta a nivel red: cero código de mocking en la app, mismos handlers en dev y en tests. |
-| Performance de listas | `src/features/catalog/components/ProductCard.tsx` | `getItemLayout` con altura fija, `keyExtractor` estable, filas memoizadas. |
-| Estrategia de testing | `src/features/catalog/__tests__/ProductListScreen.test.tsx` | Integración real contra MSW, sin mockear el store ni la red a mano. |
-| Escala a 40 pantallas | `eslint.config.js` | La regla de dependencias entre features está enforceada por el linter, no por disciplina. |
+| Tema                               | Dónde está                                                              | Respuesta corta                                                                                                                     |
+| ---------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| New Architecture                   | `android/gradle.properties`, `ios/Podfile`                              | Fabric + TurboModules activos por defecto desde RN 0.76; renderer en C++, sin el bridge asíncrono.                                  |
+| Memoización nivel 1                | `src/features/catalog/screens/ProductListScreen.tsx`                    | `useMemo` para aplanar páginas, `useCallback` en `renderItem`/`keyExtractor`, `React.memo` en la fila. Las tres solo sirven juntas. |
+| Memoización nivel 2                | `src/features/catalog/selectors.ts`                                     | `createSelector`: un selector que devuelve un objeto nuevo re-renderiza en cada dispatch.                                           |
+| Memoización nivel 3                | `src/features/profile/screens/PerformanceLabScreen.tsx`                 | Contador de renders por fila: la diferencia se ve, no se explica.                                                                   |
+| Cuándo NO memoizar                 | `src/features/catalog/screens/ProductDetailScreen.tsx`                  | Cálculo barato sin `useMemo`, con el porqué en un comentario.                                                                       |
+| Custom hook con cleanup            | `src/features/catalog/hooks/useDebouncedValue.ts`                       | El `return` del `useEffect` es lo que evita timers colgados.                                                                        |
+| RTK Query vs. Context              | `src/services/api/baseApi.ts`, `src/features/catalog/catalogApi.ts`     | Cache, tags, dedupe y estados de carga gratis; Context no es un sistema de cache.                                                   |
+| Estado servidor vs. cliente        | `src/features/catalog/catalogSlice.ts`                                  | El slice guarda filtros, no productos.                                                                                              |
+| Paginado infinito                  | `src/features/catalog/catalogApi.ts`                                    | `infiniteQuery` con cursor; `getNextPageParam` devuelve `undefined` para cortar.                                                    |
+| Navegación tipada                  | `src/navigation/types.ts`                                               | `ParamList` + `declare global` en `ReactNavigation.RootParamList`.                                                                  |
+| Manejo de 401                      | `src/services/api/baseApi.ts`, `src/services/api/sessionEvents.ts`      | Wrapper del baseQuery que despacha un evento neutral; evita que services dependa de features.                                       |
+| Seguridad del token                | `src/services/storage/asyncStorage.ts`                                  | AsyncStorage no está cifrado; en producción va Keychain. Está detrás de una interfaz para cambiarlo en un archivo (ADR-003).        |
+| Persistencia sin ensuciar reducers | `src/services/session/`, `src/services/favorites/favoritesListeners.ts` | `createListenerMiddleware`: los reducers quedan puros y síncronos.                                                                  |
+| MSW                                | `src/mocks/`                                                            | Intercepta a nivel red: cero código de mocking en la app, mismos handlers en dev y en tests.                                        |
+| Performance de listas              | `src/features/catalog/components/ProductCard.tsx`                       | `getItemLayout` con altura fija, `keyExtractor` estable, filas memoizadas.                                                          |
+| Estrategia de testing              | `src/features/catalog/__tests__/ProductListScreen.test.tsx`             | Integración real contra MSW, sin mockear el store ni la red a mano.                                                                 |
+| Escala a 40 pantallas              | `eslint.config.js`                                                      | La regla de dependencias entre features está enforceada por el linter, no por disciplina.                                           |
 
 - [ ] **Step 4: Tomar las capturas**
 
