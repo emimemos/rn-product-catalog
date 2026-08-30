@@ -2,9 +2,10 @@ import React, {useCallback, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 
 import {Button, Screen, TextField} from '@/components/ui';
-import {DEMO_PASSWORD, DEMO_USER} from '@/mocks/db';
 import {useSession} from '@/services/session';
 import {colors, spacing, typography} from '@/theme/tokens';
+
+import {DEMO_EMAIL, DEMO_PASSWORD} from '../demoCredentials';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -103,7 +104,7 @@ export function LoginScreen() {
 
         {__DEV__ && (
           <Text style={styles.hint}>
-            Demo: {DEMO_USER.email} / {DEMO_PASSWORD}
+            Demo: {DEMO_EMAIL} / {DEMO_PASSWORD}
           </Text>
         )}
       </View>
