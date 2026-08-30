@@ -9,7 +9,7 @@ import type {Storage} from './types';
  * en Android). Se eligió AsyncStorage acá para no sumar dependencias nativas y
  * reducir el riesgo de que el build se rompa (ADR-003). El reemplazo afecta
  * únicamente a este archivo, porque todo lo demás depende de la interfaz
- * `Storage`. El tradeoff se documenta en el README (futuro, no presente).
+ * `Storage`. El tradeoff se documenta en el README.
  */
 export const asyncStorage: Storage = {
   getItem: key => AsyncStorage.getItem(key),
