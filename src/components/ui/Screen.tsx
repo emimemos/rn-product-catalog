@@ -11,14 +11,20 @@ interface ScreenProps {
 }
 
 export function Screen({children, scroll = false}: ScreenProps) {
-  const Container = scroll ? ScrollView : View;
+  if (scroll) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scroll}>
+          {children}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <Container
-        style={styles.content}
-        contentContainerStyle={scroll ? styles.scroll : undefined}>
-        {children}
-      </Container>
+      <View style={styles.content}>{children}</View>
     </SafeAreaView>
   );
 }

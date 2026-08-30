@@ -1,6 +1,6 @@
 /**
- * Constantes, no theming en runtime. El dark mode es un no-objetivo declarado
- * del spec: agregarlo significaría un ThemeProvider y un hook, no cambiar esto.
+ * Constantes, no theming en runtime. Soportar dark mode implicaría introducir
+ * un ThemeProvider y un hook, no editar este archivo.
  */
 export const colors = {
   background: '#FFFFFF',
