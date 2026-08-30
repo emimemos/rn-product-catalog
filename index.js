@@ -4,8 +4,8 @@
 
 import {AppRegistry} from 'react-native';
 
-import App from './App';
 import {name as appName} from './app.json';
+import App from './src/app/App';
 
 // El bootstrap nativo llama a runApplication en cuanto termina de evaluar el
 // bundle top-level, sin esperar nada asíncrono. El mocking de dev se arma acá

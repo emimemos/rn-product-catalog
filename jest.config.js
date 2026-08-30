@@ -10,6 +10,14 @@ module.exports = {
     // no lo tomen. Bajo esa condición Jest no cae al resto de `exports`, sino
     // que falla la resolución, así que se apunta directo al archivo.
     '^msw/node$': '<rootDir>/node_modules/msw/lib/node/index.js',
+    // La condición 'react-native' de los `exports` de immer (dependencia de
+    // @reduxjs/toolkit) apunta siempre a su build ESM, incluso cuando quien
+    // pide el paquete usa `require`. Igual que con msw/node, se apunta
+    // directo al archivo CJS para evitar que Jest intente parsear ESM.
+    '^immer$': '<rootDir>/node_modules/immer/dist/cjs/index.js',
+    // Mismo problema que con immer: la condición 'react-native' de
+    // react-redux también apunta a su build ESM.
+    '^react-redux$': '<rootDir>/node_modules/react-redux/dist/cjs/index.js',
   },
   transformIgnorePatterns: [
     'node_modules/(?!(?:@?react-native|@react-navigation|msw|@mswjs|@bundled-es-modules|until-async|outvariant|strict-event-emitter|headers-polyfill|rettime|@open-draft)/)',
