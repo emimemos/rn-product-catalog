@@ -266,7 +266,6 @@ module.exports = {
 module.exports = {
   preset: 'react-native',
   setupFiles: ['<rootDir>/src/test/polyfills.ts'],
-  setupFilesAfterEach: undefined,
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   moduleNameMapper: {'^@/(.*)$': '<rootDir>/src/$1'},
   transformIgnorePatterns: [
@@ -284,8 +283,6 @@ module.exports = {
   },
 };
 ```
-
-Borrar la clave `setupFilesAfterEach: undefined` (está solo para marcar que no se usa) — el archivo final no debe tenerla.
 
 - [ ] **Step 13: Crear los archivos de setup de tests (vacíos por ahora)**
 
@@ -1589,52 +1586,7 @@ export function renderWithProviders(
 
 > El `NavigationContainer` se agrega a este wrapper en la Task 9, cuando exista.
 
-- [ ] **Step 10: Escribir el test que falla del baseApi**
-
-`src/services/api/__tests__/baseApi.test.ts`:
-
-```ts
-import {makeStore} from '@/app/store';
-import {ACCESS_TOKEN} from '@/mocks/handlers';
-
-import {baseApi} from '../baseApi';
-import {unauthorized} from '../sessionEvents';
-
-const probeApi = baseApi.injectEndpoints({
-  endpoints: build => ({
-    probeMe: build.query<{id: string}, void>({query: () => '/auth/me'}),
-  }),
-  overrideExisting: true,
-});
-
-describe('baseApi', () => {
-  it('inyecta el Authorization header desde el store', async () => {
-    const store = makeStore({session: {status: 'signedIn', accessToken: ACCESS_TOKEN, user: null}});
-    const result = await store.dispatch(probeApi.endpoints.probeMe.initiate());
-    expect(result.data).toBeDefined();
-  });
-
-  it('despacha `unauthorized` cuando la respuesta es 401', async () => {
-    const store = makeStore();
-    const dispatched: string[] = [];
-    store.subscribe(() => {});
-    const originalDispatch = store.dispatch;
-    jest.spyOn(store, 'dispatch').mockImplementation((action: unknown) => {
-      if (typeof action === 'object' && action !== null && 'type' in action) {
-        dispatched.push(String((action as {type: unknown}).type));
-      }
-      return originalDispatch(action as never);
-    });
-
-    await store.dispatch(probeApi.endpoints.probeMe.initiate());
-    expect(dispatched).toContain(unauthorized.type);
-  });
-});
-```
-
-> Este test depende del slice `auth` (Task 7) para el `preloadedState`. **Escribirlo en la Task 7, no acá.** En la Task 5 solo se verifica que el store se construye: reemplazar este archivo por el del Step 11 y traer estos dos casos en la Task 7, Step 9.
-
-- [ ] **Step 11: Escribir el test real de esta task**
+- [ ] **Step 10: Escribir el test del store**
 
 `src/services/api/__tests__/baseApi.test.ts`:
 
@@ -1655,12 +1607,15 @@ describe('store', () => {
 });
 ```
 
-- [ ] **Step 12: Correr el test y verificar que pasa**
+> Los casos que ejercitan el `Authorization` header y el 401 necesitan el slice
+> `session`, que llega en la Task 7. Se agregan ahí (Task 7, Step 10), no acá.
+
+- [ ] **Step 11: Correr el test y verificar que pasa**
 
 Run: `npx jest src/services/api --no-coverage`
 Expected: PASS, 2 tests.
 
-- [ ] **Step 13: Verificación completa y commit**
+- [ ] **Step 12: Verificación completa y commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
@@ -2413,7 +2368,40 @@ export {useSession} from './useSession';
 
 - [ ] **Step 10: Traer los dos casos diferidos al test del baseApi**
 
-Reemplazar `src/services/api/__tests__/baseApi.test.ts` por el contenido del Step 10 de la Task 5, que ahora sí compila porque el slice `auth` existe.
+Agregar a `src/services/api/__tests__/baseApi.test.ts` los dos casos que la Task 5 dejó pendientes, que ahora compilan porque el slice `session` existe:
+
+```ts
+import {ACCESS_TOKEN} from '@/mocks/handlers';
+
+import {unauthorized} from '../sessionEvents';
+
+const probeApi = baseApi.injectEndpoints({
+  endpoints: build => ({
+    probeMe: build.query<{id: string}, void>({query: () => '/auth/me'}),
+  }),
+  overrideExisting: true,
+});
+
+describe('baseApi', () => {
+  it('inyecta el Authorization header desde el store', async () => {
+    const store = makeStore({
+      session: {status: 'signedIn', accessToken: ACCESS_TOKEN, user: null},
+    });
+    const result = await store.dispatch(probeApi.endpoints.probeMe.initiate());
+    expect(result.data).toBeDefined();
+  });
+
+  it('limpia la sesión cuando la respuesta es 401', async () => {
+    const store = makeStore({
+      session: {status: 'signedIn', accessToken: 'token-invalido', user: null},
+    });
+    await store.dispatch(probeApi.endpoints.probeMe.initiate());
+    // `unauthorized` lo despacha el wrapper del baseQuery; el slice lo escucha.
+    expect(store.getState().session.status).toBe('signedOut');
+    expect(unauthorized.type).toBe('session/unauthorized');
+  });
+});
+```
 
 - [ ] **Step 11: Correr los tests y verificar que pasan**
 
@@ -4705,6 +4693,7 @@ y cambiar `AppTabParamList` para que `ProfileTab` sea `NavigatorScreenParams<Pro
 import {fireEvent, screen, waitFor} from '@testing-library/react-native';
 import React from 'react';
 
+import {productsApi} from '@/services/api/productsApi';
 import {renderWithProviders} from '@/test/renderWithProviders';
 
 import {ProfileScreen} from '../screens/ProfileScreen';
@@ -4737,7 +4726,9 @@ describe('ProfileScreen', () => {
 
   it('cierra la sesión y limpia el cache de la API', async () => {
     const {store} = renderProfile();
-    await store.dispatch({type: 'api/queries/probe'} as never);
+    // Poblar el cache de verdad: si no, el assert final pasaría trivialmente.
+    await store.dispatch(productsApi.endpoints.getProduct.initiate('p-001'));
+    expect(Object.keys(store.getState().api.queries).length).toBeGreaterThan(0);
 
     fireEvent.press(screen.getByTestId('profile-logout'));
 
