@@ -7,22 +7,22 @@ import {AppRegistry} from 'react-native';
 import App from './App';
 import {name as appName} from './app.json';
 
-async function enableMocking() {
-  if (!__DEV__) {
-    return;
+// El bootstrap nativo llama a runApplication en cuanto termina de evaluar el
+// bundle top-level, sin esperar nada asíncrono. El mocking de dev se arma acá
+// con requires sincrónicos, no con imports dinámicos: así termina de armarse
+// antes de que se registre el componente, y no queda ninguna ventana en la
+// que un fetch temprano le gane la carrera al shim. El try/catch evita que
+// un fallo acá bloquee el arranque de la app.
+if (__DEV__) {
+  try {
+    require('./msw.polyfills');
+    const {startMockServer} = require('./src/mocks/server.native');
+    startMockServer().catch(error => {
+      console.error('No se pudo arrancar el mock server de dev:', error);
+    });
+  } catch (error) {
+    console.error('No se pudo arrancar el mock server de dev:', error);
   }
-  await import('./msw.polyfills');
-  const {startMockServer} = await import('./src/mocks/server.native');
-  await startMockServer();
 }
 
-// Registrar el componente sincrónicamente y arrancar el mocking en paralelo,
-// sin bloquear el registro: el bootstrap nativo llama a runApplication en
-// cuanto termina de evaluar el bundle, sin esperar a que se resuelvan los
-// imports asíncronos de abajo. Si el registro queda detrás de un `await`,
-// runApplication encuentra el componente sin registrar y la app nunca
-// levanta pantalla.
 AppRegistry.registerComponent(appName, () => App);
-enableMocking().catch(error => {
-  console.error('No se pudo arrancar el mock server de dev:', error);
-});

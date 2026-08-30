@@ -6,10 +6,10 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest'),
 );
 
-// Se habilita en la Task 6, cuando el árbol de la app empieza a depender de
-// SafeAreaProvider/useSafeAreaInsets de verdad: el mock actual expone todo
-// bajo `.default` y rompe la interoperabilidad de nombrados con el árbol
-// mínimo de hoy.
+// El mock de esta versión expone todo bajo `.default` en vez de nombrados,
+// así que rompería la interoperabilidad con cómo este árbol mínimo importa
+// SafeAreaProvider/useSafeAreaInsets. Se habilita cuando algún componente
+// real dependa de esos hooks y valga la pena adaptar el import o el mock.
 // jest.mock('react-native-safe-area-context', () =>
 //   require('react-native-safe-area-context/jest/mock'),
 // );
