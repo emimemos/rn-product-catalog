@@ -3,12 +3,13 @@ import {API_BASE_URL} from '@/services/api/config';
 import {handlers} from './handlers';
 
 /**
- * Fallback de ADR-005: `msw/native` intercepta a nivel de módulo nativo
- * (`fetch`/`XMLHttpRequest`), y ese camino no compiló con el bundler de Metro
- * de este proyecto (`@mswjs/interceptors` usa sintaxis que el preset de Babel
- * de RN no transforma). Este shim reemplaza `fetch` a nivel de entrypoint y
- * enruta cada request contra los mismos `handlers` que usan los tests, así que
- * el contrato de API sigue teniendo una sola fuente de verdad.
+ * Fallback de ADR-005: msw/native intercepta a nivel de módulo nativo, pero
+ * su interceptor de fetch asume el pipeline de streams del fetch estándar y
+ * no el de React Native, así que el body de la respuesta llega vacío del
+ * otro lado. Este shim reemplaza `fetch` a nivel de entrypoint y enruta cada
+ * request contra los mismos `handlers` que usan los tests (via `handler.run`,
+ * sin pasar por ningún interceptor de red), así que el contrato de API sigue
+ * teniendo una sola fuente de verdad.
  */
 export async function startMockServer(): Promise<void> {
   const original = globalThis.fetch;
