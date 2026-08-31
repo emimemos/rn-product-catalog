@@ -2,6 +2,7 @@ import {makeStore} from '@/app/store';
 import {unauthorized} from '@/services/api/sessionEvents';
 import type {User} from '@/services/api/types';
 import {createMemoryStorage, STORAGE_KEYS} from '@/services/storage';
+import type {Storage} from '@/services/storage';
 
 import sessionReducer, {
   restoreSession,
@@ -105,6 +106,25 @@ describe('restoreSession', () => {
 
   it('marca la sesión como ausente cuando no hay token', async () => {
     const storage = createMemoryStorage();
+    const store = makeStore();
+    await store.dispatch(restoreSession({storage}));
+
+    expect(store.getState().session).toEqual({
+      status: 'signedOut',
+      accessToken: null,
+      user: null,
+    });
+  });
+
+  it('marca la sesión como ausente cuando falla la lectura del storage', async () => {
+    // Un storage roto o sin permisos no es distinto de no tener sesión
+    // guardada: no hay nada que restaurar, así que el bootstrap tiene que
+    // resolver a `signedOut` en vez de quedarse colgado en `bootstrapping`.
+    const storage: Storage = {
+      getItem: jest.fn().mockRejectedValue(new Error('storage no disponible')),
+      setItem: jest.fn(),
+      removeItem: jest.fn(),
+    };
     const store = makeStore();
     await store.dispatch(restoreSession({storage}));
 

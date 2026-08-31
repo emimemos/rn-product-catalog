@@ -1,4 +1,4 @@
-import {screen, waitFor} from '@testing-library/react-native';
+import {screen} from '@testing-library/react-native';
 import React from 'react';
 
 import {STORAGE_KEYS, storage} from '@/services/storage';
@@ -30,6 +30,10 @@ describe('RootNavigator', () => {
     );
 
     renderWithProviders(<RootNavigator />);
-    await waitFor(() => expect(screen.getByText('Catálogo')).toBeVisible());
+    // Se busca por `testID` del tab, no por el texto 'Catálogo': ese mismo
+    // texto también lo renderiza LoginScreen como branding, así que
+    // buscarlo por copy no distinguiría haber entrado a la app de haberse
+    // quedado en el login.
+    expect(await screen.findByTestId('catalog-tab')).toBeVisible();
   });
 });

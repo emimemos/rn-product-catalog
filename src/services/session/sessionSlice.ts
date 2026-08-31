@@ -92,10 +92,23 @@ export function restoreSession({
   storage = defaultStorage,
 }: {storage?: Storage} = {}): SessionThunk {
   return async dispatch => {
-    const [token, rawUser] = await Promise.all([
-      storage.getItem(STORAGE_KEYS.accessToken),
-      storage.getItem(STORAGE_KEYS.user),
-    ]);
+    let token: string | null;
+    let rawUser: string | null;
+
+    try {
+      [token, rawUser] = await Promise.all([
+        storage.getItem(STORAGE_KEYS.accessToken),
+        storage.getItem(STORAGE_KEYS.user),
+      ]);
+    } catch {
+      // Un storage roto o sin permisos no es distinto de no tener sesión
+      // guardada: no hay nada que restaurar. Si esto rechazara en cambio,
+      // el bootstrap de RootNavigator se quedaría en `bootstrapping` para
+      // siempre, con el usuario mirando el splash sin ninguna señal de qué
+      // pasó.
+      dispatch(sessionMissing());
+      return;
+    }
 
     if (token == null || rawUser == null) {
       dispatch(sessionMissing());

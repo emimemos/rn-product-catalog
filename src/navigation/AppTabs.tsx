@@ -14,16 +14,18 @@ export function AppTabs() {
   return (
     <Tab.Navigator screenOptions={{tabBarActiveTintColor: colors.primary}}>
       {/*
-        La etiqueta del tab es 'Productos' en vez de 'Catálogo' (el título que sí
-        usa el header de CatalogStack) a propósito: si coincidieran literalmente,
-        cualquier pantalla del stack que muestre el texto 'Catálogo' generaría dos
-        nodos con el mismo texto visible y rompería las búsquedas por texto en los
-        tests.
+        `tabBarButtonTestID` identifica el botón del tab sin depender de texto
+        visible: los tests de navegación lo usan para confirmar que se llegó
+        a la app logueada sin acoplarse a ningún copy de producto.
       */}
       <Tab.Screen
         name="CatalogTab"
         component={CatalogStack}
-        options={{title: 'Productos', headerShown: false}}
+        options={{
+          title: 'Catálogo',
+          headerShown: false,
+          tabBarButtonTestID: 'catalog-tab',
+        }}
       />
       <Tab.Screen
         name="FavoritesTab"

@@ -18,10 +18,14 @@ export function RootNavigator() {
 
   useEffect(() => {
     // `restoreSession` ya resuelve internamente cualquier caso esperado
-    // (sesión ausente, JSON corrupto) despachando `sessionMissing`; el
-    // `catch` vacío solo evita una promesa flotante ante un error
-    // inesperado de storage.
-    dispatch(restoreSession()).catch(() => {});
+    // (sesión ausente, storage roto, JSON corrupto) despachando
+    // `sessionMissing`, así que en el flujo normal esta promesa no debería
+    // rechazar nunca. Este `catch` es el último recurso ante lo inesperado:
+    // se loguea en vez de tragarse el error, porque silenciarlo dejaría al
+    // usuario mirando el splash para siempre sin ninguna pista de qué pasó.
+    dispatch(restoreSession()).catch((error: unknown) => {
+      console.error('No se pudo restaurar la sesión', error);
+    });
   }, [dispatch]);
 
   // Splash mientras se lee el storage: montar el navegador antes de saber si hay
