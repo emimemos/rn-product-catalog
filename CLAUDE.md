@@ -74,9 +74,21 @@ nivel:
 (`src/services/api/sessionEvents.ts`) que `sessionSlice` escucha. La dependencia queda invertida.
 
 Esto no es disciplina, es una regla de ESLint (`eslint.config.js`, bloque
-`no-restricted-imports` sobre `src/features/**`): importar `@/features/*` desde otra feature es
-un error de lint, no una convención de código review. Es lo que hace que la arquitectura
-escale a más pantallas sin que dependa de que alguien se acuerde de la regla.
+`import/no-restricted-paths`): cruzar de una feature a otra, o de `services/` a `features/`, es
+un error de lint, no una convención de code review. La regla resuelve cada import a un archivo
+en disco antes de compararlo con la zona, así que `@/features/otra/x`, `../otra/x` y
+`../../features/otra/x` fallan las tres por igual — importante, porque la convención de más
+abajo pide usar imports relativos dentro de la propia feature. Las features se leen del disco
+al cargar la config, así que una carpeta nueva bajo `src/features/` queda protegida sola.
+
+Tres formas de romperla, las tres un error de lint: agregar
+`import {DEMO_EMAIL} from '@/features/auth/demoCredentials';` a
+`src/services/api/config.ts`; el mismo import en `src/features/catalog/selectors.ts`; y ese
+mismo import escrito como `'../auth/demoCredentials'`. `npx eslint <archivo>` las rechaza a las
+tres con el mensaje de la zona.
+
+Es lo que hace que la arquitectura escale a más pantallas sin que dependa de que alguien se
+acuerde de la regla.
 
 ## Estado servidor vs. estado cliente
 
