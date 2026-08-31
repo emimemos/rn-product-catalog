@@ -3,16 +3,16 @@ import {CATEGORIES} from '@/services/api/types';
 import {findProduct, PRODUCTS, queryProducts} from '../db';
 
 describe('PRODUCTS', () => {
-  it('tiene 50 productos', () => {
+  it('has 50 products', () => {
     expect(PRODUCTS).toHaveLength(50);
   });
 
-  it('tiene ids únicos', () => {
+  it('has unique ids', () => {
     const ids = new Set(PRODUCTS.map(p => p.id));
     expect(ids.size).toBe(PRODUCTS.length);
   });
 
-  it('cubre las 5 categorías con 10 productos cada una', () => {
+  it('covers the 5 categories with 10 products each', () => {
     for (const category of CATEGORIES) {
       expect(PRODUCTS.filter(p => p.category === category)).toHaveLength(10);
     }
@@ -20,14 +20,14 @@ describe('PRODUCTS', () => {
 });
 
 describe('queryProducts', () => {
-  it('devuelve la primera página con el tamaño pedido', () => {
+  it('returns the first page with the requested size', () => {
     const page = queryProducts({limit: 10});
     expect(page.items).toHaveLength(10);
     expect(page.total).toBe(50);
     expect(page.nextCursor).not.toBeNull();
   });
 
-  it('pagina por cursor sin repetir elementos', () => {
+  it('paginates by cursor without repeating items', () => {
     const first = queryProducts({limit: 10});
     const second = queryProducts({limit: 10, cursor: first.nextCursor});
     const firstIds = first.items.map(p => p.id);
@@ -36,19 +36,19 @@ describe('queryProducts', () => {
     expect(firstIds.some(id => secondIds.includes(id))).toBe(false);
   });
 
-  it('devuelve nextCursor null en la última página', () => {
+  it('returns a null nextCursor on the last page', () => {
     const page = queryProducts({limit: 50});
     expect(page.items).toHaveLength(50);
     expect(page.nextCursor).toBeNull();
   });
 
-  it('filtra por categoría', () => {
+  it('filters by category', () => {
     const page = queryProducts({category: 'audio', limit: 50});
     expect(page.total).toBe(10);
     expect(page.items.every(p => p.category === 'audio')).toBe(true);
   });
 
-  it('busca por nombre sin distinguir mayúsculas', () => {
+  it('searches by name case-insensitively', () => {
     const page = queryProducts({q: 'nimbus', limit: 50});
     expect(page.total).toBeGreaterThan(0);
     expect(
@@ -58,32 +58,32 @@ describe('queryProducts', () => {
     ).toBe(true);
   });
 
-  it('devuelve una página vacía cuando no hay coincidencias', () => {
+  it('returns an empty page when there are no matches', () => {
     const page = queryProducts({q: 'zzzznoexiste', limit: 50});
     expect(page.items).toEqual([]);
     expect(page.total).toBe(0);
     expect(page.nextCursor).toBeNull();
   });
 
-  it('ordena por precio ascendente', () => {
+  it('sorts by ascending price', () => {
     const {items} = queryProducts({sort: 'price_asc', limit: 50});
     const prices = items.map(p => p.priceCents);
     expect([...prices].sort((a, b) => a - b)).toEqual(prices);
   });
 
-  it('ordena por precio descendente', () => {
+  it('sorts by descending price', () => {
     const {items} = queryProducts({sort: 'price_desc', limit: 50});
     const prices = items.map(p => p.priceCents);
     expect([...prices].sort((a, b) => b - a)).toEqual(prices);
   });
 
-  it('ordena por nombre alfabéticamente por defecto', () => {
+  it('sorts alphabetically by name by default', () => {
     const {items} = queryProducts({limit: 50});
     const names = items.map(p => p.name);
-    expect([...names].sort((a, b) => a.localeCompare(b, 'es'))).toEqual(names);
+    expect([...names].sort((a, b) => a.localeCompare(b, 'en'))).toEqual(names);
   });
 
-  it('combina búsqueda, filtro y orden', () => {
+  it('combines search, filter, and sort', () => {
     const page = queryProducts({
       q: 'a',
       category: 'gaming',
@@ -97,15 +97,15 @@ describe('queryProducts', () => {
 });
 
 describe('findProduct', () => {
-  it('encuentra un producto por id', () => {
+  it('finds a product by id', () => {
     const first = PRODUCTS[0];
     if (!first) {
-      throw new Error('PRODUCTS[0] debería existir');
+      throw new Error('PRODUCTS[0] should exist');
     }
     expect(findProduct(first.id)).toEqual(first);
   });
 
-  it('devuelve undefined para un id inexistente', () => {
+  it('returns undefined for a nonexistent id', () => {
     expect(findProduct('no-existe')).toBeUndefined();
   });
 });

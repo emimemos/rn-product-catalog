@@ -3,13 +3,13 @@ import {API_BASE_URL} from '@/services/api/config';
 import {handlers} from './handlers';
 
 /**
- * `msw/native` intercepta a nivel de módulo nativo, pero su interceptor de
- * fetch asume el pipeline de streams del fetch estándar y no el de React
- * Native, así que el body de la respuesta llega vacío del otro lado. Este
- * shim reemplaza `fetch` a nivel de entrypoint y enruta cada request contra
- * los mismos `handlers` que usan los tests (vía `handler.run`, sin pasar por
- * ningún interceptor de red), así que el contrato de API sigue teniendo una
- * sola fuente de verdad.
+ * `msw/native` intercepts at the native module level, but its fetch
+ * interceptor assumes the standard fetch's stream pipeline, not React
+ * Native's, so the response body arrives empty on the other side. This shim
+ * replaces `fetch` at the entrypoint level and routes each request against
+ * the same `handlers` the tests use (via `handler.run`, without going through
+ * any network interceptor), so the API contract still has a single source of
+ * truth.
  */
 
 const INSTALLED_MARKER = Symbol.for('rn-product-catalog.mswFetchShim');
@@ -51,11 +51,9 @@ export async function startMockServer(): Promise<void> {
       }
     }
 
-    // No devolver el fallo a la red real: un handler faltante debe ser
-    // visible como tal, no como un "Network request failed" confuso.
-    throw new Error(
-      `No hay ningún handler de MSW para ${request.method} ${request.url}`,
-    );
+    // Don't hand the failure to the real network: a missing handler must be
+    // visible as such, not as a confusing "Network request failed".
+    throw new Error(`No MSW handler for ${request.method} ${request.url}`);
   };
   shim[INSTALLED_MARKER] = true;
 

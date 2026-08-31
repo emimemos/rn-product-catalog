@@ -9,11 +9,11 @@ import type {
 } from '@/services/api/types';
 
 const BASE_NAMES: Record<Category, string> = {
-  audio: 'Auriculares',
+  audio: 'Headphones',
   wearables: 'Smartwatch',
-  computers: 'Notebook',
+  computers: 'Laptop',
   gaming: 'Gamepad',
-  home: 'Lámpara',
+  home: 'Lamp',
 };
 
 const VARIANTS = [
@@ -30,8 +30,8 @@ const VARIANTS = [
 ] as const;
 
 /**
- * Dataset determinista: mismos datos en cada corrida y en cada máquina, para que
- * los tests no dependan de un seed aleatorio y la demo sea reproducible.
+ * Deterministic dataset: same data on every run and on every machine, so that
+ * tests don't depend on a random seed and the demo is reproducible.
  */
 export const PRODUCTS: Product[] = CATEGORIES.flatMap(
   (category, categoryIndex) =>
@@ -42,9 +42,9 @@ export const PRODUCTS: Product[] = CATEGORIES.flatMap(
         name: `${BASE_NAMES[category]} ${variant}`,
         description: `${
           BASE_NAMES[category]
-        } ${variant} de la línea ${category}, edición ${
+        } ${variant} from the ${category} line, ${
           2020 + (variantIndex % 6)
-        }.`,
+        } edition.`,
         priceCents: 1999 + index * 1500,
         category,
         rating: Number((3 + ((index * 7) % 21) / 10).toFixed(1)),
@@ -77,14 +77,15 @@ function compare(sort: SortOption): (a: Product, b: Product) => number {
     case 'price_desc':
       return (a, b) => b.priceCents - a.priceCents;
     case 'name':
-      return (a, b) => a.name.localeCompare(b.name, 'es');
+      return (a, b) => a.name.localeCompare(b.name, 'en');
   }
 }
 
 /**
- * Paginado por cursor (el id del último elemento devuelto) en vez de por offset:
- * es lo que hace un backend real y evita saltos cuando el dataset cambia entre
- * páginas. Si el cursor no se encuentra, se empieza desde el principio.
+ * Cursor-based pagination (the id of the last item returned) instead of
+ * offset-based: that's what a real backend does, and it avoids skips when the
+ * dataset changes between pages. If the cursor isn't found, we start from the
+ * beginning.
  */
 export function queryProducts(params: QueryProductsParams = {}): ProductsPage {
   const {

@@ -12,8 +12,8 @@ import {DEMO_PASSWORD, DEMO_USER} from '../db';
 export const ACCESS_TOKEN = 'demo-access-token';
 
 /**
- * Latencia artificial solo fuera de los tests: en la demo hace visibles los
- * skeletons y los estados de carga; en Jest solo haría los tests más lentos.
+ * Artificial latency only outside of tests: in the demo it makes skeletons
+ * and loading states visible; in Jest it would only make tests slower.
  */
 const withLatency = process.env.NODE_ENV !== 'test';
 
@@ -24,8 +24,8 @@ async function maybeDelay(): Promise<void> {
 }
 
 export const authHandlers = [
-  // El tercer genérico de `http.*` fija el tipo de cuerpo de respuesta: sin él,
-  // TS infiere el de la primera rama y rechaza las demás.
+  // The third generic of `http.*` fixes the response body type: without it,
+  // TS infers it from the first branch and rejects the rest.
   http.post<never, LoginRequest, ApiErrorBody | LoginResponse>(
     `${API_BASE_URL}/auth/login`,
     async ({request}) => {
@@ -37,7 +37,7 @@ export const authHandlers = [
         password !== DEMO_PASSWORD
       ) {
         return HttpResponse.json<ApiErrorBody>(
-          {message: 'Credenciales inválidas'},
+          {message: 'Invalid credentials'},
           {status: 401},
         );
       }

@@ -3,8 +3,8 @@ import type {LoginResponse, Product, ProductsPage} from '@/services/api/types';
 
 import {DEMO_PASSWORD, DEMO_USER} from '../db';
 
-describe('handlers de auth', () => {
-  it('devuelve token y usuario con credenciales válidas', async () => {
+describe('auth handlers', () => {
+  it('returns token and user with valid credentials', async () => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -16,7 +16,7 @@ describe('handlers de auth', () => {
     expect(body.user).toEqual(DEMO_USER);
   });
 
-  it('devuelve 401 con credenciales inválidas', async () => {
+  it('returns 401 with invalid credentials', async () => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -26,8 +26,8 @@ describe('handlers de auth', () => {
   });
 });
 
-describe('handlers de productos', () => {
-  it('devuelve una página de productos', async () => {
+describe('product handlers', () => {
+  it('returns a page of products', async () => {
     const response = await fetch(`${API_BASE_URL}/products?limit=10`);
     expect(response.status).toBe(200);
     const page = (await response.json()) as ProductsPage;
@@ -35,7 +35,7 @@ describe('handlers de productos', () => {
     expect(page.total).toBe(50);
   });
 
-  it('respeta el filtro de categoría', async () => {
+  it('respects the category filter', async () => {
     const response = await fetch(
       `${API_BASE_URL}/products?category=audio&limit=50`,
     );
@@ -43,19 +43,19 @@ describe('handlers de productos', () => {
     expect(page.total).toBe(10);
   });
 
-  it('devuelve un producto por id', async () => {
+  it('returns a product by id', async () => {
     const response = await fetch(`${API_BASE_URL}/products/p-001`);
     expect(response.status).toBe(200);
     const product = (await response.json()) as Product;
     expect(product.id).toBe('p-001');
   });
 
-  it('devuelve 404 para un producto inexistente', async () => {
+  it('returns 404 for a nonexistent product', async () => {
     const response = await fetch(`${API_BASE_URL}/products/no-existe`);
     expect(response.status).toBe(404);
   });
 
-  it('inyecta un 500 con ?fail=1', async () => {
+  it('injects a 500 with ?fail=1', async () => {
     const response = await fetch(`${API_BASE_URL}/products?fail=1`);
     expect(response.status).toBe(500);
   });

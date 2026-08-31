@@ -32,21 +32,21 @@ function parseSort(value: string | null): SortOption {
 }
 
 export const productHandlers = [
-  // El tercer genérico de `http.*` fija el tipo de cuerpo de respuesta: sin él,
-  // TS infiere el de la primera rama y rechaza las demás.
+  // The third generic of `http.*` fixes the response body type: without it,
+  // TS infers it from the first branch and rejects the rest.
   http.get<never, never, ApiErrorBody | ProductsPage>(
     `${API_BASE_URL}/products`,
     async ({request}) => {
       const url = new URL(request.url);
       await maybeDelay();
 
-      // Inyección de fallos. No es alcanzable desde la app: la query string
-      // la arma `catalogApi` y no expone este parámetro. Existe para los
-      // tests, y para poder pegarle a mano desde un cliente HTTP contra el
-      // shim de dev sin tocar código.
+      // Fault injection. Not reachable from the app: `catalogApi` builds the
+      // query string and doesn't expose this parameter. It exists for the
+      // tests, and so it can be hit by hand from an HTTP client against the
+      // dev shim without touching code.
       if (url.searchParams.get('fail') === '1') {
         return HttpResponse.json<ApiErrorBody>(
-          {message: 'Fallo inyectado'},
+          {message: 'Injected failure'},
           {status: 500},
         );
       }
@@ -75,7 +75,7 @@ export const productHandlers = [
 
       if (!product) {
         return HttpResponse.json<ApiErrorBody>(
-          {message: 'Producto no encontrado'},
+          {message: 'Product not found'},
           {status: 404},
         );
       }
