@@ -4,27 +4,28 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    // El entorno de test de @react-native/jest-preset resuelve `exports` con
-    // la condición 'react-native', y msw declara esa condición como `null`
-    // en 'msw/node' (solo pensado para Node puro) para que los bundlers de RN
-    // no lo tomen. Bajo esa condición Jest no cae al resto de `exports`, sino
-    // que falla la resolución, así que se apunta directo al archivo.
+    // @react-native/jest-preset's test environment resolves `exports` with
+    // the 'react-native' condition, and msw declares that condition as
+    // `null` in 'msw/node' (meant only for plain Node) so RN bundlers won't
+    // pick it up. Under that condition Jest doesn't fall back to the rest of
+    // `exports`, it just fails resolution, so this points straight at the
+    // file.
     '^msw/node$': '<rootDir>/node_modules/msw/lib/node/index.js',
-    // La condición 'react-native' de los `exports` de immer (dependencia de
-    // @reduxjs/toolkit) apunta siempre a su build ESM, incluso cuando quien
-    // pide el paquete usa `require`. Igual que con msw/node, se apunta
-    // directo al archivo CJS para evitar que Jest intente parsear ESM.
+    // immer's (a dependency of @reduxjs/toolkit) `exports`' 'react-native'
+    // condition always points to its ESM build, even when whoever requests
+    // the package uses `require`. Same as with msw/node, this points
+    // straight at the CJS file to keep Jest from trying to parse ESM.
     '^immer$': '<rootDir>/node_modules/immer/dist/cjs/index.js',
-    // Mismo problema que con immer: la condición 'react-native' de
-    // react-redux también apunta a su build ESM.
+    // Same problem as with immer: react-redux's 'react-native' condition
+    // also points to its ESM build.
     '^react-redux$': '<rootDir>/node_modules/react-redux/dist/cjs/index.js',
   },
   transformIgnorePatterns: [
     'node_modules/(?!(?:@?react-native|@react-navigation|msw|@mswjs|@bundled-es-modules|until-async|outvariant|strict-event-emitter|headers-polyfill|rettime|@open-draft)/)',
   ],
   transform: {
-    // Se agrega `.mjs` a la extensión por defecto del preset: `rettime`
-    // (dependencia transitiva de msw) se publica solo como ESM (`.mjs`).
+    // `.mjs` is added to the preset's default extension: `rettime` (a
+    // transitive dependency of msw) is published only as ESM (`.mjs`).
     '^.+\\.(js|mjs|ts|tsx)$': 'babel-jest',
     '^.+\\.(bmp|gif|jpg|jpeg|mp4|png|psd|svg|webp)$': require.resolve(
       '@react-native/jest-preset/jest/assetFileTransformer.js',
@@ -38,18 +39,19 @@ module.exports = {
     '!src/**/*.d.ts',
   ],
   /**
-   * El umbral se fija apenas por debajo de lo que la suite mide hoy
-   * (98.19 / 96.87 / 90.82 / 98.12): así CI falla cuando se borra un test o se
-   * agrega código sin cubrir, que es lo único que un umbral puede detectar. Un
-   * umbral 25 puntos por debajo de lo real no defiende nada: se podría borrar
-   * un tercio de la suite y seguir en verde.
+   * The threshold is set just below what the suite measures today
+   * (98.19 / 96.87 / 90.82 / 98.12): that way CI fails when a test is deleted
+   * or code is added without coverage, which is the only thing a threshold
+   * can detect. A threshold 25 points below the real number defends
+   * nothing: a third of the suite could be deleted and it would still stay
+   * green.
    *
-   * El denominador es el de `collectCoverageFrom`: `features/`, `services/` y
-   * `utils/`. Quedan fuera `src/app`, `src/navigation`, `src/components/ui`,
-   * `src/theme`, `src/mocks` y `src/test` — composición, primitivos de
-   * presentación e infraestructura de test. Varios de esos igual se ejercitan
-   * de punta a punta desde los tests de pantalla; lo que no hacen es contar en
-   * el porcentaje.
+   * The denominator is `collectCoverageFrom`'s: `features/`, `services/`,
+   * and `utils/`. Left out are `src/app`, `src/navigation`,
+   * `src/components/ui`, `src/theme`, `src/mocks`, and `src/test` —
+   * composition, presentation primitives, and test infrastructure. Several
+   * of those still get exercised end to end from the screen tests; what
+   * they don't do is count toward the percentage.
    */
   coverageThreshold: {
     global: {statements: 97, branches: 95, functions: 89, lines: 97},

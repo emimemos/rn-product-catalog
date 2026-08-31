@@ -7,21 +7,21 @@ import {AppRegistry} from 'react-native';
 import {name as appName} from './app.json';
 import App from './src/app/App';
 
-// El bootstrap nativo llama a runApplication en cuanto termina de evaluar el
-// bundle top-level, sin esperar nada asíncrono. El mocking de dev se arma acá
-// con requires sincrónicos, no con imports dinámicos: así termina de armarse
-// antes de que se registre el componente, y no queda ninguna ventana en la
-// que un fetch temprano le gane la carrera al shim. El try/catch evita que
-// un fallo acá bloquee el arranque de la app.
+// The native bootstrap calls runApplication as soon as it finishes
+// evaluating the top-level bundle, without waiting for anything async. Dev
+// mocking is set up here with synchronous requires, not dynamic imports: that
+// way it finishes setting up before the component is registered, and there's
+// no window left in which an early fetch beats the shim in a race. The
+// try/catch keeps a failure here from blocking the app's startup.
 if (__DEV__) {
   try {
     require('./msw.polyfills');
     const {startMockServer} = require('./src/mocks/server.native');
     startMockServer().catch(error => {
-      console.error('No se pudo arrancar el mock server de dev:', error);
+      console.error('Could not start the dev mock server:', error);
     });
   } catch (error) {
-    console.error('No se pudo arrancar el mock server de dev:', error);
+    console.error('Could not start the dev mock server:', error);
   }
 }
 

@@ -2,11 +2,11 @@ import 'fast-text-encoding';
 import 'react-native-url-polyfill/auto';
 import 'web-streams-polyfill/polyfill';
 
-// msw importa su módulo de WebSocket incluso cuando solo se usan handlers
-// HTTP, y ese módulo instancia un BroadcastChannel a nivel de módulo para
-// coordinar clientes de WS entre pestañas. Hermes no expone BroadcastChannel
-// y esta app no registra handlers de WebSocket, así que este stub no necesita
-// entregar mensajes de verdad: solo evita que la construcción falle.
+// msw imports its WebSocket module even when only HTTP handlers are used,
+// and that module instantiates a module-level BroadcastChannel to coordinate
+// WS clients across tabs. Hermes doesn't expose BroadcastChannel and this
+// app doesn't register any WebSocket handlers, so this stub doesn't need to
+// deliver real messages: it just keeps construction from failing.
 if (typeof global.BroadcastChannel === 'undefined') {
   class NoopBroadcastChannel {
     constructor(name) {

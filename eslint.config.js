@@ -9,9 +9,9 @@ const compat = new FlatCompat({baseDirectory: __dirname});
 const FEATURES_DIR = path.join(__dirname, 'src', 'features');
 
 /**
- * Las features se leen del disco en vez de listarse a mano: una feature nueva
- * queda protegida por la regla el mismo día que se crea la carpeta, sin que
- * nadie se acuerde de tocar este archivo.
+ * Features are read from disk instead of being listed by hand: a new
+ * feature is protected by the rule the same day its folder is created,
+ * without anyone having to remember to touch this file.
  */
 const featureNames = fs
   .readdirSync(FEATURES_DIR, {withFileTypes: true})
@@ -19,10 +19,10 @@ const featureNames = fs
   .map(entry => entry.name);
 
 const CROSS_FEATURE_MESSAGE =
-  'Una feature no importa de otra feature. Subí lo compartido a components/ui, services o utils. Dentro de la propia feature usá imports relativos.';
+  "A feature doesn't import from another feature. Move shared code up to components/ui, services, or utils. Within your own feature, use relative imports.";
 
 const SERVICES_MESSAGE =
-  'services/ no importa de features/: la dependencia va en un solo sentido. Si services necesita avisarle algo a una feature, invertí la dependencia con un action creator neutral (ver src/services/api/sessionEvents.ts).';
+  "services/ doesn't import from features/: the dependency goes one way. If services needs to notify a feature of something, invert the dependency with a neutral action creator (see src/services/api/sessionEvents.ts).";
 
 module.exports = [
   {
@@ -62,16 +62,16 @@ module.exports = [
     },
   },
   {
-    // Regla de dependencias, enforceada acá y no por disciplina de code review.
+    // Dependency rule, enforced here instead of by code review discipline.
     //
-    // Se usa `import/no-restricted-paths` en vez de `no-restricted-imports`
-    // porque este resuelve cada import a un archivo en disco antes de
-    // compararlo con la zona: `@/features/otra/x`, `../otra/x` y
-    // `../../features/otra/x` son el mismo archivo y las tres formas caen bajo
-    // la misma prohibición. `no-restricted-imports` compara el string tal cual
-    // se escribió, así que solo veía la variante con alias — y la convención de
-    // este repo es usar imports relativos dentro de la propia feature, que es
-    // justo la forma que se le escapaba.
+    // `import/no-restricted-paths` is used instead of `no-restricted-imports`
+    // because this one resolves each import to a file on disk before
+    // comparing it against the zone: `@/features/other/x`, `../other/x`, and
+    // `../../features/other/x` are the same file, and all three forms fall
+    // under the same prohibition. `no-restricted-imports` compares the string
+    // as written, so it only saw the aliased variant — and this repo's
+    // convention is to use relative imports within a feature itself, which is
+    // exactly the form that slipped past it.
     files: ['src/**/*.{ts,tsx}'],
     rules: {
       'import/no-restricted-paths': [
@@ -79,8 +79,8 @@ module.exports = [
         {
           basePath: __dirname,
           zones: [
-            // Una zona por feature: todo `src/features` es zona prohibida para
-            // la feature X, excepto la propia carpeta de X.
+            // One zone per feature: all of `src/features` is a forbidden
+            // zone for feature X, except X's own folder.
             ...featureNames.map(name => ({
               target: `./src/features/${name}`,
               from: './src/features',
