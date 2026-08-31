@@ -1,5 +1,6 @@
 import {combineReducers, configureStore} from '@reduxjs/toolkit';
 
+import catalogReducer from '@/features/catalog/catalogSlice';
 import {baseApi} from '@/services/api/baseApi';
 import {registerSessionListeners, sessionReducer} from '@/services/session';
 
@@ -8,6 +9,7 @@ import {listenerMiddleware, startAppListening} from './listenerMiddleware';
 const rootReducer = combineReducers({
   [baseApi.reducerPath]: baseApi.reducer,
   session: sessionReducer,
+  catalog: catalogReducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;
