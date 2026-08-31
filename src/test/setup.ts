@@ -37,3 +37,23 @@ jest.mock('react-native-safe-area-context', () => {
 beforeAll(() => server.listen({onUnhandledRequest: 'error'}));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
+
+// El `autoBatchEnhancer` de Redux Toolkit (activado por defecto en
+// `configureStore`) agenda su notificación a los listeners con
+// `requestAnimationFrame`, y el preset de RN lo implementa como un
+// `setTimeout(fn, 0)` real. Si ese timer no llega a dispararse antes de que
+// termine el archivo de test que lo agendó, Jest ya destruyó el entorno de
+// ese archivo, y el callback revienta con "You are trying to access a
+// property or method of the Jest environment after it has been torn down" al
+// ejecutarse mientras corre el archivo siguiente. Reimplementarlo sobre un
+// microtask en vez de un macrotask hace que siempre se resuelva antes de que
+// el test que lo disparó termine, sin cambiar el comportamiento en runtime
+// (ahí sigue usándose el `requestAnimationFrame` nativo).
+Object.defineProperty(global, 'requestAnimationFrame', {
+  configurable: true,
+  writable: true,
+  value: (callback: (time: number) => void) => {
+    queueMicrotask(() => callback(Date.now()));
+    return 0;
+  },
+});
