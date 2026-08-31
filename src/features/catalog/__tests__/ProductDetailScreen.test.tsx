@@ -23,36 +23,36 @@ function renderDetail(
 }
 
 describe('ProductDetailScreen', () => {
-  it('muestra el skeleton mientras carga', async () => {
+  it('shows the skeleton while loading', async () => {
     renderDetail('p-001');
     expect(screen.getByTestId('detail-skeleton')).toBeVisible();
-    // Se espera a que la query asiente para que su resolución (fetch de msw
-    // -> acción `fulfilled`) caiga dentro de este test: sin este await llega
-    // después de que el test ya terminó, fuera del `act` de React.
+    // We wait for the query to settle so its resolution (msw fetch ->
+    // `fulfilled` action) lands inside this test: without this await it
+    // arrives after the test has already finished, outside React's `act`.
     expect(await screen.findByTestId('detail-name')).toBeVisible();
   });
 
-  it('muestra los datos del producto', async () => {
+  it('shows the product data', async () => {
     renderDetail('p-001');
     expect(await screen.findByTestId('detail-name')).toHaveTextContent(
-      'Auriculares Nimbus',
+      'Headphones Nimbus',
     );
     expect(screen.getByText('$19.99')).toBeVisible();
   });
 
-  it('pinta al instante si el producto ya está en el cache', async () => {
+  it('renders instantly if the product is already in the cache', async () => {
     const {store} = renderWithProviders(<></>);
     await store.dispatch(productsApi.endpoints.getProduct.initiate('p-001'));
 
     renderDetail('p-001', store);
-    // Sin pasar por el skeleton: el dato ya estaba.
+    // No skeleton pass: the data was already there.
     expect(screen.queryByTestId('detail-skeleton')).toBeNull();
     expect(screen.getByTestId('detail-name')).toHaveTextContent(
-      'Auriculares Nimbus',
+      'Headphones Nimbus',
     );
   });
 
-  it('alterna el favorito', async () => {
+  it('toggles the favorite', async () => {
     const {store} = renderDetail('p-001');
     fireEvent.press(await screen.findByTestId('favorite-p-001'));
     expect(store.getState().favorites.ids).toEqual(['p-001']);
@@ -60,10 +60,10 @@ describe('ProductDetailScreen', () => {
     expect(store.getState().favorites.ids).toEqual([]);
   });
 
-  it('muestra un error con reintento si el producto no existe', async () => {
+  it('shows an error with retry if the product does not exist', async () => {
     server.use(
       http.get(`${API_BASE_URL}/products/:id`, () =>
-        HttpResponse.json({message: 'No encontrado'}, {status: 404}),
+        HttpResponse.json({message: 'Not found'}, {status: 404}),
       ),
     );
     renderDetail('p-999');

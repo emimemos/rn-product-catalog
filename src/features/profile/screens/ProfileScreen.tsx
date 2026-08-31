@@ -12,7 +12,7 @@ export function ProfileScreen({navigation}: ProfileScreenProps) {
   return (
     <Screen scroll>
       <View style={styles.card}>
-        <Text style={styles.name}>{user?.name ?? 'Invitado'}</Text>
+        <Text style={styles.name}>{user?.name ?? 'Guest'}</Text>
         <Text testID="profile-email" style={styles.email}>
           {user?.email ?? '—'}
         </Text>
@@ -25,11 +25,7 @@ export function ProfileScreen({navigation}: ProfileScreenProps) {
           variant="ghost"
           onPress={() => navigation.navigate('PerformanceLab')}
         />
-        <Button
-          testID="profile-logout"
-          label="Cerrar sesión"
-          onPress={signOut}
-        />
+        <Button testID="profile-logout" label="Sign out" onPress={signOut} />
       </View>
     </Screen>
   );

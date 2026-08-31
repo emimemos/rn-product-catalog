@@ -8,18 +8,18 @@ import {colors, radius, spacing, typography} from '@/theme/tokens';
 import {sortChanged} from '../catalogSlice';
 
 const OPTIONS: Array<{value: SortOption; label: string}> = [
-  {value: 'name', label: 'Nombre'},
-  {value: 'price_asc', label: 'Precio ↑'},
-  {value: 'price_desc', label: 'Precio ↓'},
+  {value: 'name', label: 'Name'},
+  {value: 'price_asc', label: 'Price ↑'},
+  {value: 'price_desc', label: 'Price ↓'},
 ];
 
 export function SortControl() {
   const dispatch = useAppDispatch();
   const selected = useAppSelector(state => state.catalog.sort);
 
-  // Handler inline y sin `useCallback`, por el mismo motivo que en
-  // `CategoryFilter`: cada chip cierra sobre su propio valor, así que la
-  // closure se recrea igual y memoizar el handler de arriba no evita nada.
+  // Inline handler without `useCallback`, for the same reason as in
+  // `CategoryFilter`: each chip closes over its own value, so the closure is
+  // recreated either way and memoizing the handler above wouldn't avoid anything.
   return (
     <View style={styles.row}>
       {OPTIONS.map(option => {

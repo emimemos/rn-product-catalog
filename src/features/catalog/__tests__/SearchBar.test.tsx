@@ -9,7 +9,7 @@ describe('SearchBar', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it('no despacha la query antes del debounce', () => {
+  it('does not dispatch the query before the debounce', () => {
     const {store} = renderWithProviders(<SearchBar />);
     fireEvent.changeText(screen.getByTestId('search-input'), 'nimbus');
     act(() => {
@@ -18,7 +18,7 @@ describe('SearchBar', () => {
     expect(store.getState().catalog.query).toBe('');
   });
 
-  it('despacha la query una vez cumplido el debounce', () => {
+  it('dispatches the query once the debounce has elapsed', () => {
     const {store} = renderWithProviders(<SearchBar />);
     fireEvent.changeText(screen.getByTestId('search-input'), 'nimbus');
     act(() => {
@@ -27,7 +27,7 @@ describe('SearchBar', () => {
     expect(store.getState().catalog.query).toBe('nimbus');
   });
 
-  it('refleja el texto tipeado de inmediato en el input', () => {
+  it('reflects the typed text immediately in the input', () => {
     renderWithProviders(<SearchBar />);
     const input = screen.getByTestId('search-input');
     fireEvent.changeText(input, 'nimbus');

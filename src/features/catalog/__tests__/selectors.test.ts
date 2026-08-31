@@ -4,21 +4,21 @@ import {categoryChanged, queryChanged} from '../catalogSlice';
 import {selectHasActiveFilters, selectProductsQueryArgs} from '../selectors';
 
 describe('selectProductsQueryArgs', () => {
-  it('devuelve la misma referencia si el estado relevante no cambió', () => {
+  it('returns the same reference if the relevant state did not change', () => {
     const store = makeStore();
     const first = selectProductsQueryArgs(store.getState());
     const second = selectProductsQueryArgs(store.getState());
     expect(second).toBe(first);
   });
 
-  it('sigue devolviendo la misma referencia tras un dispatch que no toca el catálogo', () => {
+  it('keeps returning the same reference after a dispatch that does not touch the catalog', () => {
     const store = makeStore();
     const first = selectProductsQueryArgs(store.getState());
     store.dispatch({type: 'ruido/irrelevante'});
     expect(selectProductsQueryArgs(store.getState())).toBe(first);
   });
 
-  it('devuelve una referencia nueva cuando cambia un filtro', () => {
+  it('returns a new reference when a filter changes', () => {
     const store = makeStore();
     const first = selectProductsQueryArgs(store.getState());
     store.dispatch(categoryChanged('audio'));
@@ -29,11 +29,11 @@ describe('selectProductsQueryArgs', () => {
 });
 
 describe('selectHasActiveFilters', () => {
-  it('es falso con los filtros por defecto', () => {
+  it('is false with the default filters', () => {
     expect(selectHasActiveFilters(makeStore().getState())).toBe(false);
   });
 
-  it('es verdadero cuando hay una búsqueda', () => {
+  it('is true when there is a search', () => {
     const store = makeStore();
     store.dispatch(queryChanged('nimbus'));
     expect(selectHasActiveFilters(store.getState())).toBe(true);

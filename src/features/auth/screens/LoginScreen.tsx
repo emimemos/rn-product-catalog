@@ -18,19 +18,19 @@ interface FieldErrors {
 function validate(email: string, password: string): FieldErrors {
   const errors: FieldErrors = {};
   if (!EMAIL_PATTERN.test(email.trim())) {
-    errors.email = 'Ingresá un email válido';
+    errors.email = 'Enter a valid email';
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
-    errors.password = `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`;
+    errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
   }
   return errors;
 }
 
 /**
- * El error de red y el de credenciales se distinguen por la forma del error de
- * fetchBaseQuery: un 401 trae `status: 401`; una caída de red trae
- * `status: 'FETCH_ERROR'`. Mostrar "credenciales inválidas" ante un problema de
- * red es uno de los bugs de UX más comunes en apps móviles.
+ * The network error and the credentials error are told apart by the shape of
+ * fetchBaseQuery's error: a 401 carries `status: 401`; a network drop
+ * carries `status: 'FETCH_ERROR'`. Showing "invalid credentials" for a
+ * network problem is one of the most common UX bugs in mobile apps.
  */
 function messageFor(error: unknown): string | null {
   if (error == null || typeof error !== 'object' || !('status' in error)) {
@@ -38,9 +38,9 @@ function messageFor(error: unknown): string | null {
   }
   const {status} = error as {status: unknown};
   if (status === 401) {
-    return 'Email o contraseña incorrectos';
+    return 'Incorrect email or password';
   }
-  return 'No pudimos conectarnos. Revisá tu conexión e intentá de nuevo';
+  return "We couldn't connect. Check your connection and try again";
 }
 
 export function LoginScreen() {
@@ -55,8 +55,9 @@ export function LoginScreen() {
     if (Object.keys(errors).length > 0) {
       return;
     }
-    // El estado de sesión lo actualiza sessionSlice al resolverse la mutación; acá
-    // solo se ignora el rechazo, que ya se refleja en `error`.
+    // The session state is updated by sessionSlice once the mutation
+    // resolves; here we just ignore the rejection, which is already
+    // reflected in `error`.
     signIn(email.trim(), password).catch(() => {});
   }, [email, password, signIn]);
 
@@ -65,7 +66,7 @@ export function LoginScreen() {
   return (
     <Screen scroll>
       <View style={styles.form}>
-        <Text style={styles.title}>Catálogo</Text>
+        <Text style={styles.title}>Catalog</Text>
 
         <TextField
           testID="login-email"
@@ -81,7 +82,7 @@ export function LoginScreen() {
 
         <TextField
           testID="login-password"
-          label="Contraseña"
+          label="Password"
           value={password}
           onChangeText={setPassword}
           error={fieldErrors.password}
@@ -97,7 +98,7 @@ export function LoginScreen() {
 
         <Button
           testID="login-submit"
-          label="Ingresar"
+          label="Sign in"
           onPress={onSubmit}
           loading={isSigningIn}
         />

@@ -11,12 +11,12 @@ import {categoryChanged} from '../catalogSlice';
 const OPTIONS: Array<Category | 'all'> = ['all', ...CATEGORIES];
 
 const LABELS: Record<Category | 'all', string> = {
-  all: 'Todas',
+  all: 'All',
   audio: 'Audio',
   wearables: 'Wearables',
-  computers: 'Computación',
+  computers: 'Computers',
   gaming: 'Gaming',
-  home: 'Hogar',
+  home: 'Home',
 };
 
 export function CategoryFilter() {
@@ -24,14 +24,14 @@ export function CategoryFilter() {
   const selected = useAppSelector(state => state.catalog.category);
 
   /**
-   * El handler va inline y sin `useCallback` a propósito. Cada chip necesita su
-   * propia categoría, así que `onPress` sería igual una closure nueva por
-   * render (`() => onSelect(option)`) aunque `onSelect` fuera estable: la
-   * memoización quedaría envuelta en algo no memoizado y no ahorraría un solo
-   * render. Y `Pressable` no está memoizado, así que re-renderiza con el padre
-   * de todos modos. Son seis chips sobre un dispatch; el criterio es el mismo
-   * que en `ProductDetailScreen`: se memoiza cuando hay una razón, no por
-   * reflejo.
+   * The handler is inline and without `useCallback` on purpose. Each chip
+   * needs its own category, so `onPress` would be a new closure per render
+   * either way (`() => onSelect(option)`) even if `onSelect` were stable: the
+   * memoization would end up wrapped in something unmemoized and wouldn't
+   * save a single render. And `Pressable` isn't memoized, so it re-renders
+   * with the parent regardless. It's six chips over a dispatch; the criterion
+   * is the same as in `ProductDetailScreen`: memoize when there's a reason,
+   * not by reflex.
    */
   return (
     <ScrollView

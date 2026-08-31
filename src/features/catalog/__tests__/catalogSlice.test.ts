@@ -8,23 +8,23 @@ import type {CatalogState} from '../catalogSlice';
 const initial: CatalogState = {query: '', category: 'all', sort: 'name'};
 
 describe('catalogSlice', () => {
-  it('tiene filtros vacíos por defecto', () => {
+  it('has empty filters by default', () => {
     expect(catalogReducer(undefined, {type: '@@INIT'})).toEqual(initial);
   });
 
-  it('actualiza la query', () => {
+  it('updates the query', () => {
     expect(catalogReducer(initial, queryChanged('nimbus')).query).toBe(
       'nimbus',
     );
   });
 
-  it('actualiza la categoría', () => {
+  it('updates the category', () => {
     expect(catalogReducer(initial, categoryChanged('audio')).category).toBe(
       'audio',
     );
   });
 
-  it('actualiza el orden', () => {
+  it('updates the sort', () => {
     expect(catalogReducer(initial, sortChanged('price_desc')).sort).toBe(
       'price_desc',
     );

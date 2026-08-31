@@ -4,8 +4,8 @@ import type {PayloadAction} from '@reduxjs/toolkit';
 import type {Category, SortOption} from '@/services/api/types';
 
 /**
- * Solo estado de cliente. Los productos son estado de servidor y viven en el
- * cache de RTK Query: duplicarlos acá sería tener dos fuentes de verdad.
+ * Client-only state. Products are server state and live in RTK Query's
+ * cache: duplicating them here would mean having two sources of truth.
  */
 export interface CatalogState {
   query: string;

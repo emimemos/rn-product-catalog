@@ -6,7 +6,7 @@ import {colors, radius, spacing, typography} from '@/theme/tokens';
 
 const ROWS = Array.from({length: 8}, (_, index) => ({
   id: index,
-  label: `Fila ${index + 1}`,
+  label: `Row ${index + 1}`,
 }));
 
 interface RowProps {
@@ -17,10 +17,10 @@ interface RowProps {
 }
 
 /**
- * El contador vive en un ref que se incrementa durante el render. Es impuro a
- * propósito: es la única forma de contar renders sin provocar otro render.
- * En StrictMode con doble render los números se duplicarían — vale la pena
- * saberlo y decirlo antes de que lo pregunten.
+ * The counter lives in a ref that's incremented during render. It's impure
+ * on purpose: it's the only way to count renders without causing another
+ * render. Under StrictMode with double rendering the numbers would double —
+ * worth knowing and saying before someone asks.
  */
 function Row({label, index, variant, onPress}: RowProps) {
   const renders = useRef(0);
@@ -45,15 +45,15 @@ export function PerformanceLabScreen() {
   const parentRenders = useRef(0);
   parentRenders.current += 1;
 
-  // Columna izquierda: handler recreado en cada render. `Row` no está memoizada,
-  // así que re-renderiza siempre.
+  // Left column: handler recreated on every render. `Row` isn't memoized,
+  // so it always re-renders.
   const onPressPlain = (_index: number) => {};
 
-  // Columna derecha: handler estable + fila memoizada. Eso es todo lo que hace
-  // falta; `ROWS` es una constante de módulo y su identidad ya no puede
-  // cambiar, así que envolverla en un `useMemo` no la haría más estable —
-  // sería exactamente la memoización refleja que esta pantalla existe para
-  // desarmar.
+  // Right column: stable handler + memoized row. That's all it takes;
+  // `ROWS` is a module-level constant and its identity can no longer
+  // change, so wrapping it in a `useMemo` wouldn't make it any more
+  // stable — that would be exactly the reflexive memoization this screen
+  // exists to dismantle.
   const onPressMemo = useCallback((_index: number) => {}, []);
 
   return (
@@ -61,14 +61,14 @@ export function PerformanceLabScreen() {
       <View style={styles.header}>
         <TextInput
           testID="lab-input"
-          placeholder="Escribí para forzar renders del padre"
+          placeholder="Type to force parent re-renders"
           placeholderTextColor={colors.textMuted}
           value={text}
           onChangeText={setText}
           style={styles.input}
         />
         <Text style={styles.caption}>
-          Renders del padre:{' '}
+          Parent renders:{' '}
           <Text testID="lab-parent-renders" style={styles.badgeInline}>
             {parentRenders.current}
           </Text>
@@ -78,7 +78,7 @@ export function PerformanceLabScreen() {
       <ScrollView contentContainerStyle={styles.columns} horizontal={false}>
         <View style={styles.columnsRow}>
           <View style={styles.column}>
-            <Text style={styles.columnTitle}>Sin memoizar</Text>
+            <Text style={styles.columnTitle}>Not memoized</Text>
             {ROWS.map(row => (
               <Row
                 key={row.id}
@@ -91,7 +91,7 @@ export function PerformanceLabScreen() {
           </View>
 
           <View style={styles.column}>
-            <Text style={styles.columnTitle}>Memoizada</Text>
+            <Text style={styles.columnTitle}>Memoized</Text>
             {ROWS.map(row => (
               <MemoRow
                 key={row.id}
@@ -105,15 +105,15 @@ export function PerformanceLabScreen() {
         </View>
 
         <Text style={styles.explainer}>
-          Acá las filas se mapean directas, sin `FlatList` de por medio: la
-          estabilidad de las props —`onPress` incluido— es lo único que decide
-          si una fila memoizada re-renderiza. Por eso la columna izquierda sube
-          y la derecha se queda quieta. Ese resultado no se generaliza: dentro
-          del `FlatList` del catálogo medimos que `useCallback` en `renderItem`
-          no cambiaba nada (10 renders con y sin memoizar al tipear), porque la
-          celda `PureComponent` de `FlatList` ya bloquea el re-render por props
-          iguales; ahí lo que sí importaba era memoizar el `onPress` de cada
-          fila.
+          Here the rows are mapped directly, with no `FlatList` in between: the
+          stability of the props — `onPress` included — is the only thing that
+          decides whether a memoized row re-renders. That's why the left column
+          climbs and the right one stays still. That result doesn't generalize:
+          inside the catalog's `FlatList` we measured that `useCallback` on
+          `renderItem` changed nothing (10 renders with and without memoizing
+          while typing), because `FlatList`'s `PureComponent` cell already
+          blocks the re-render on equal props; there, what did matter was
+          memoizing each row's `onPress`.
         </Text>
       </ScrollView>
     </Screen>

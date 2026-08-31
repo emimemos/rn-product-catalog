@@ -29,7 +29,7 @@ function renderProfile() {
 describe('ProfileScreen', () => {
   afterEach(() => jest.clearAllMocks());
 
-  it('muestra los datos del usuario', () => {
+  it('shows the user data', () => {
     renderProfile();
     expect(screen.getByTestId('profile-email')).toHaveTextContent(
       'demo@catalog.dev',
@@ -37,9 +37,9 @@ describe('ProfileScreen', () => {
     expect(screen.getByText('Demo User')).toBeVisible();
   });
 
-  it('cierra la sesión y limpia el cache de la API', async () => {
+  it('signs out and clears the API cache', async () => {
     const {store} = renderProfile();
-    // Poblar el cache de verdad: si no, el assert final pasaría trivialmente.
+    // Actually populate the cache: otherwise the final assert would pass trivially.
     await store.dispatch(productsApi.endpoints.getProduct.initiate('p-001'));
     expect(Object.keys(store.getState().api.queries).length).toBeGreaterThan(0);
 
@@ -52,7 +52,7 @@ describe('ProfileScreen', () => {
     expect(Object.keys(store.getState().api.queries)).toHaveLength(0);
   });
 
-  it('navega al Performance Lab', () => {
+  it('navigates to the Performance Lab', () => {
     renderProfile();
     fireEvent.press(screen.getByTestId('profile-open-lab'));
     expect(navigation.navigate).toHaveBeenCalledWith('PerformanceLab');

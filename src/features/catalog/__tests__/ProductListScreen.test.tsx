@@ -11,25 +11,25 @@ import {SEARCH_DEBOUNCE_MS} from '../components/SearchBar';
 import {ProductListScreen} from '../screens/ProductListScreen';
 
 /**
- * Destraba el debounce del buscador sin abandonar los temporizadores fake a
- * mitad de vuelo.
+ * Unblocks the search box's debounce without abandoning the fake timers
+ * mid-flight.
  *
- * `jest.advanceTimersByTime` (sincrónico) más un `jest.useRealTimers()`
- * inmediatamente después dispara un bug real de `@reduxjs/toolkit`: su
- * `autoBatchEnhancer` encola la notificación a los suscriptores con
- * `requestAnimationFrame` (con un `setTimeout` de respaldo), y si esa cola
- * queda armada bajo timers fake y el test pasa a reales antes de que se
- * dispare, la notificación pendiente queda huérfana. Redux sigue procesando
- * las acciones (el estado final del store es correcto), pero React nunca se
- * entera: el componente deja de re-renderizar para siempre, incluso ante
- * cambios posteriores, aunque el store ya tenga el resultado. Se reprodujo de
- * forma aislada con un componente mínimo suscripto a esta misma infinite
- * query — no es específico de esta pantalla, y no hay forma de evitarlo
- * cambiando cómo se consume el hook.
- * `jest.advanceTimersByTimeAsync` evita el problema: intercala el avance del
- * reloj fake con el drenado de promesas (el fetch contra msw), así que el
- * pedido a la nueva query se resuelve sin nunca soltar los timers fake a
- * mitad de camino.
+ * `jest.advanceTimersByTime` (synchronous) plus a `jest.useRealTimers()`
+ * immediately after triggers a real bug in `@reduxjs/toolkit`: its
+ * `autoBatchEnhancer` queues the notification to subscribers with
+ * `requestAnimationFrame` (with a `setTimeout` fallback), and if that queue is
+ * armed under fake timers and the test switches to real ones before it fires,
+ * the pending notification is orphaned. Redux keeps processing actions (the
+ * store's final state is correct), but React never finds out: the component
+ * stops re-rendering forever, even on later changes, even though the store
+ * already has the result. This was reproduced in isolation with a minimal
+ * component subscribed to this same infinite query — it isn't specific to
+ * this screen, and there's no way to avoid it by changing how the hook is
+ * consumed.
+ * `jest.advanceTimersByTimeAsync` avoids the problem: it interleaves
+ * advancing the fake clock with draining promises (the fetch against msw), so
+ * the request for the new query resolves without ever releasing the fake
+ * timers halfway through.
  */
 async function waitOutDebounce() {
   await act(async () => {
@@ -39,7 +39,7 @@ async function waitOutDebounce() {
 
 const navigation = {navigate: jest.fn()};
 
-/** Los argumentos con los que el catálogo arranca, sin filtros ni búsqueda. */
+/** The arguments the catalog starts with, with no filters or search. */
 const selectDefaultPage = catalogApi.endpoints.getProducts.select({
   q: '',
   category: 'all',
@@ -61,36 +61,39 @@ describe('ProductListScreen', () => {
     jest.useRealTimers();
   });
 
-  it('muestra el skeleton mientras carga', async () => {
+  it('shows the skeleton while loading', async () => {
     renderScreen();
     expect(screen.getByTestId('list-skeleton')).toBeVisible();
-    // Se espera a que la carga inicial asiente para que el dispatch async del
-    // fetch caiga dentro del test, no después: si el test termina apenas se
-    // afirma el skeleton, esa resolución llega fuera del `act` de este test.
-    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    // We wait for the initial load to settle so the fetch's async dispatch
+    // falls inside this test, not after: if the test ended right after
+    // asserting the skeleton, that resolution would land outside this test's
+    // `act`.
+    expect(await screen.findByText('Gamepad Atlas')).toBeVisible();
   });
 
-  it('muestra la primera página de productos', async () => {
+  it('shows the first page of products', async () => {
     renderScreen();
-    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(await screen.findByText('Gamepad Atlas')).toBeVisible();
     expect(screen.queryByTestId('list-skeleton')).toBeNull();
   });
 
-  it('filtra la lista al buscar', async () => {
+  it('filters the list when searching', async () => {
     jest.useFakeTimers();
     renderScreen();
     await waitFor(() =>
       expect(screen.getByTestId('product-list')).toBeVisible(),
     );
+    // First page under the default sort, before any filtering.
+    expect(screen.getByText('Gamepad Atlas')).toBeVisible();
 
-    fireEvent.changeText(screen.getByTestId('search-input'), 'Gamepad');
+    fireEvent.changeText(screen.getByTestId('search-input'), 'Headphones');
     await waitOutDebounce();
 
-    expect(await screen.findByText('Gamepad Atlas')).toBeVisible();
-    expect(screen.queryByText('Auriculares Atlas')).toBeNull();
+    expect(await screen.findByText('Headphones Atlas')).toBeVisible();
+    expect(screen.queryByText('Gamepad Atlas')).toBeNull();
   });
 
-  it('muestra el estado vacío cuando no hay coincidencias', async () => {
+  it('shows the empty state when there are no matches', async () => {
     jest.useFakeTimers();
     renderScreen();
     await waitFor(() =>
@@ -100,10 +103,10 @@ describe('ProductListScreen', () => {
     fireEvent.changeText(screen.getByTestId('search-input'), 'zzzznoexiste');
     await waitOutDebounce();
 
-    expect(await screen.findByText('Sin resultados')).toBeVisible();
+    expect(await screen.findByText('No results')).toBeVisible();
   });
 
-  it('muestra el error con reintento cuando la API falla', async () => {
+  it('shows the error with retry when the API fails', async () => {
     server.use(
       http.get(`${API_BASE_URL}/products`, () =>
         HttpResponse.json({message: 'Boom'}, {status: 500}),
@@ -113,28 +116,28 @@ describe('ProductListScreen', () => {
     expect(await screen.findByTestId('retry')).toBeVisible();
   });
 
-  it('navega al detalle al tocar un producto', async () => {
+  it('navigates to the detail screen when a product is tapped', async () => {
     renderScreen();
-    fireEvent.press(await screen.findByTestId('product-card-p-005'));
+    fireEvent.press(await screen.findByTestId('product-card-p-035'));
     expect(navigation.navigate).toHaveBeenCalledWith('ProductDetail', {
-      productId: 'p-005',
+      productId: 'p-035',
     });
   });
 });
 
 /**
- * Las tres interacciones de la lista —pull-to-refresh, reintento tras error y
- * scroll infinito— no se distinguen mirando la pantalla: con datos de mock
- * estáticos, un refetch exitoso pinta exactamente lo mismo que un no-op. Lo
- * que sí las distingue es cuántas requests salieron y con qué parámetros, y
- * eso es lo que se afirma acá.
+ * The list's three interactions — pull-to-refresh, retry after an error, and
+ * infinite scroll — can't be told apart by looking at the screen: with static
+ * mock data, a successful refetch paints exactly the same thing as a no-op.
+ * What does tell them apart is how many requests went out and with what
+ * parameters, and that's what's asserted here.
  *
- * El conteo se toma del stream de eventos de msw en vez de reemplazar el
- * handler por un espía: así se cuentan las requests que realmente salieron por
- * la red interceptada, contra los mismos handlers que sirven al resto de la
- * suite y a la app en dev.
+ * The count is taken from msw's event stream instead of replacing the handler
+ * with a spy: that way we count the requests that actually went out over the
+ * intercepted network, against the same handlers that serve the rest of the
+ * suite and the app in dev.
  */
-describe('ProductListScreen — requests que dispara cada interacción', () => {
+describe('ProductListScreen — requests each interaction triggers', () => {
   const requests: string[] = [];
 
   beforeEach(() => {
@@ -153,10 +156,10 @@ describe('ProductListScreen — requests que dispara cada interacción', () => {
   });
 
   /**
-   * `FlatList` reprograma su ventana de celdas con un batcher de ~50 ms cuando
-   * cambia la cantidad de items. Se lo espera dentro de `act` en vez de dejar
-   * que dispare después del test: si no, la actualización cae fuera del `act`
-   * de este test y React avisa desde el archivo siguiente.
+   * `FlatList` reschedules its cell window with a ~50ms batcher when the item
+   * count changes. We wait for it inside `act` instead of letting it fire
+   * afterwards: otherwise the update lands outside this test's `act` and
+   * React warns from the next file.
    */
   async function settleList(): Promise<void> {
     await act(async () => {
@@ -164,21 +167,21 @@ describe('ProductListScreen — requests que dispara cada interacción', () => {
     });
   }
 
-  it('pull-to-refresh dispara exactamente una request más, con los mismos parámetros', async () => {
+  it('pull-to-refresh triggers exactly one more request, with the same parameters', async () => {
     renderScreen();
-    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(await screen.findByText('Gamepad Atlas')).toBeVisible();
     expect(requests).toHaveLength(1);
 
     fireEvent(screen.getByTestId('product-list'), 'refresh');
 
     await waitFor(() => expect(requests).toHaveLength(2));
-    // Un refetch, no una página nueva: misma URL, sin cursor.
+    // A refetch, not a new page: same URL, no cursor.
     expect(requests[1]).toBe(requests[0]);
-    expect(screen.getByText('Auriculares Atlas')).toBeVisible();
+    expect(screen.getByText('Gamepad Atlas')).toBeVisible();
     await settleList();
   });
 
-  it('el reintento tras un error vuelve a pedir y pinta la lista', async () => {
+  it('retrying after an error re-fetches and renders the list', async () => {
     server.use(
       http.get(`${API_BASE_URL}/products`, () =>
         HttpResponse.json({message: 'Boom'}, {status: 500}),
@@ -188,20 +191,20 @@ describe('ProductListScreen — requests que dispara cada interacción', () => {
     expect(await screen.findByTestId('retry')).toBeVisible();
     expect(requests).toHaveLength(1);
 
-    // Se restauran los handlers por defecto para que el reintento encuentre
-    // una API sana: lo que se prueba es que el botón vuelve a pedir, no que la
-    // API siga rota.
+    // The default handlers are restored so the retry finds a healthy API:
+    // what's being tested is that the button re-fetches, not that the API
+    // stays broken.
     server.resetHandlers();
     fireEvent.press(screen.getByTestId('retry'));
 
-    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(await screen.findByText('Gamepad Atlas')).toBeVisible();
     expect(requests).toHaveLength(2);
     await settleList();
   });
 
-  it('llegar al final de la lista pide la página siguiente con el cursor de la última fila', async () => {
+  it('reaching the end of the list requests the next page with the cursor of the last row', async () => {
     const {store} = renderScreen();
-    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(await screen.findByText('Gamepad Atlas')).toBeVisible();
     expect(requests).toHaveLength(1);
     expect(requests[0]).not.toContain('cursor=');
 
@@ -211,19 +214,19 @@ describe('ProductListScreen — requests que dispara cada interacción', () => {
       expect(selectDefaultPage(store.getState()).data?.pages).toHaveLength(2),
     );
     expect(requests).toHaveLength(2);
-    // `p-010` es el último producto de la primera página con el orden por
-    // nombre: el cursor sale de los datos, no de un contador de páginas.
-    expect(requests[1]).toContain('cursor=p-010');
+    // `p-040` is the last product of the first page under name order: the
+    // cursor comes from the data, not from a page counter.
+    expect(requests[1]).toContain('cursor=p-040');
 
     const list = screen.getByTestId('product-list');
     expect((list.props as {data: unknown[]}).data).toHaveLength(20);
     await settleList();
   });
 
-  it('no pide nada más cuando ya no quedan páginas', async () => {
-    // La categoría `audio` tiene exactamente 10 productos, que es el tamaño de
-    // página: la primera respuesta ya viene sin `nextCursor`, así que
-    // `hasNextPage` es false y el handler de scroll tiene que cortar solo.
+  it("doesn't request anything more once there are no pages left", async () => {
+    // The `audio` category has exactly 10 products, which is the page size:
+    // the first response already comes back with no `nextCursor`, so
+    // `hasNextPage` is false and the scroll handler has to stop on its own.
     renderWithProviders(
       <ProductListScreen
         navigation={navigation as never}
@@ -231,7 +234,7 @@ describe('ProductListScreen — requests que dispara cada interacción', () => {
       />,
       {preloadedState: {catalog: {query: '', category: 'audio', sort: 'name'}}},
     );
-    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(await screen.findByText('Headphones Atlas')).toBeVisible();
     expect(requests).toHaveLength(1);
 
     fireEvent(screen.getByTestId('product-list'), 'endReached');

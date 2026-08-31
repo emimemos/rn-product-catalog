@@ -32,18 +32,19 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
   } = useGetProductsInfiniteQuery(queryArgs);
 
   /**
-   * Aplanar las páginas es O(n) sobre `currentData.pages`. `useMemo` con
-   * `currentData?.pages` como dependencia (no `currentData`) evita repetir
-   * ese trabajo en renders donde los datos no cambiaron — por ejemplo, cada
-   * tecla del buscador antes de que la nueva query resuelva. No se midió el
-   * costo de no memoizar esto; la justificación es evitar una recomputación
-   * innecesaria, no una medición de framerate.
+   * Flattening the pages is O(n) over `currentData.pages`. `useMemo` with
+   * `currentData?.pages` as the dependency (not `currentData`) avoids
+   * repeating that work on renders where the data didn't change — for
+   * example, every keystroke in the search box before the new query
+   * resolves. The cost of not memoizing this wasn't measured; the
+   * justification is avoiding an unnecessary recomputation, not a framerate
+   * measurement.
    *
-   * Se usa `currentData` (datos para los argumentos actuales) en vez de
-   * `data` (que RTK Query mantiene con el último resultado exitoso aunque
-   * hayan cambiado los argumentos, para evitar parpadeos): con `data` la
-   * lista seguiría mostrando resultados de la búsqueda anterior mientras se
-   * resuelve la nueva.
+   * `currentData` (data for the current arguments) is used instead of
+   * `data` (which RTK Query keeps holding the last successful result even
+   * after the arguments changed, to avoid flicker): with `data` the list
+   * would keep showing results from the previous search while the new one
+   * resolves.
    */
   const products = useMemo<Product[]>(
     () => currentData?.pages.flatMap(page => page.items) ?? [],
@@ -56,20 +57,21 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
   );
 
   /**
-   * Medido instrumentando el render de `ProductCard`: tipear en el buscador
-   * dispara 10 renders de `renderItem` con este `useCallback` puesto y 10 sin
-   * él; forzar 5 re-renders del padre sin cambiar los datos da 0 renders de
-   * `ProductCard` en ambos casos. La identidad de `renderItem` no es lo que
-   * evita que `ProductCard` se re-renderice: `FlatList` envuelve cada fila en
-   * un `CellRenderer` (`PureComponent`) que vuelve a ejecutar `renderItem`
-   * igual, pero como `product` y `onPress` llegan con la misma identidad, el
-   * `React.memo` de `ProductCard` sigue bloqueando el re-render. Lo que
-   * sostiene esa identidad es `onPressProduct` memoizado arriba.
+   * Measured by instrumenting `ProductCard`'s render: typing in the search
+   * box triggers 10 renders of `renderItem` with this `useCallback` in place
+   * and 10 without it; forcing 5 re-renders of the parent without changing
+   * the data gives 0 renders of `ProductCard` in both cases. `renderItem`'s
+   * identity is not what keeps `ProductCard` from re-rendering: `FlatList`
+   * wraps each row in a `CellRenderer` (`PureComponent`) that re-runs
+   * `renderItem` either way, but since `product` and `onPress` arrive with
+   * the same identity, `ProductCard`'s `React.memo` still blocks the
+   * re-render. What holds that identity steady is `onPressProduct` memoized
+   * above.
    *
-   * Memoizar `renderItem` sigue valiendo la pena, pero por otra razón: sin
-   * `useCallback` cambia de identidad en cada render del padre y fuerza a los
-   * `CellRenderer` internos de la lista a re-renderizarse —aunque las cards
-   * no lo hagan—, que sigue siendo trabajo de más.
+   * Memoizing `renderItem` is still worthwhile, but for a different reason:
+   * without `useCallback` it changes identity on every parent render and
+   * forces the list's internal `CellRenderer`s to re-render — even if the
+   * cards don't — which is still extra work.
    */
   const renderItem = useCallback<ListRenderItem<Product>>(
     ({item}) => <ProductCard product={item} onPress={onPressProduct} />,
@@ -78,8 +80,8 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
 
   const keyExtractor = useCallback((item: Product) => item.id, []);
 
-  // Altura fija conocida: evita que la FlatList mida cada fila y hace que el
-  // scroll a un índice sea O(1).
+  // Known fixed height: keeps the FlatList from measuring each row and makes
+  // scrolling to an index O(1).
   const getItemLayout = useCallback(
     (_data: ArrayLike<Product> | null | undefined, index: number) => ({
       length: PRODUCT_CARD_HEIGHT,
@@ -108,7 +110,7 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
       <Screen>
         {header}
         <ErrorView
-          message="No pudimos cargar el catálogo."
+          message="We couldn't load the catalog."
           onRetry={() => refetch().catch(() => {})}
         />
       </Screen>
@@ -136,11 +138,11 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
           }
           ListEmptyComponent={
             <EmptyState
-              title="Sin resultados"
+              title="No results"
               message={
                 hasFilters
-                  ? 'Probá con otra búsqueda o quitá los filtros.'
-                  : 'Todavía no hay productos.'
+                  ? 'Try another search or clear the filters.'
+                  : 'There are no products yet.'
               }
             />
           }

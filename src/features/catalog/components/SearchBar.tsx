@@ -22,8 +22,8 @@ export function SearchBar() {
     <View style={styles.container}>
       <TextInput
         testID="search-input"
-        accessibilityLabel="Buscar productos"
-        placeholder="Buscar productos"
+        accessibilityLabel="Search products"
+        placeholder="Search products"
         placeholderTextColor={colors.textMuted}
         value={text}
         onChangeText={setText}

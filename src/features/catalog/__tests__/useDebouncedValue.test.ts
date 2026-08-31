@@ -6,12 +6,12 @@ describe('useDebouncedValue', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it('devuelve el valor inicial de inmediato', () => {
+  it('returns the initial value immediately', () => {
     const {result} = renderHook(() => useDebouncedValue('a', 300));
     expect(result.current).toBe('a');
   });
 
-  it('no actualiza antes de que pase el delay', () => {
+  it('does not update before the delay has passed', () => {
     const {rerender, result} = renderHook(
       ({value}: {value: string}) => useDebouncedValue(value, 300),
       {initialProps: {value: 'a'}},
@@ -23,7 +23,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('a');
   });
 
-  it('actualiza una vez cumplido el delay', () => {
+  it('updates once the delay has elapsed', () => {
     const {rerender, result} = renderHook(
       ({value}: {value: string}) => useDebouncedValue(value, 300),
       {initialProps: {value: 'a'}},
@@ -35,7 +35,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('b');
   });
 
-  it('colapsa varios cambios rápidos en una sola actualización', () => {
+  it('collapses several rapid changes into a single update', () => {
     const {rerender, result} = renderHook(
       ({value}: {value: string}) => useDebouncedValue(value, 300),
       {initialProps: {value: 'a'}},
@@ -55,7 +55,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('d');
   });
 
-  it('limpia el timer al desmontarse', () => {
+  it('clears the timer on unmount', () => {
     const clearSpy = jest.spyOn(global, 'clearTimeout');
     const {unmount} = renderHook(() => useDebouncedValue('a', 300));
     unmount();

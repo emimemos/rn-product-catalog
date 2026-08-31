@@ -11,9 +11,9 @@ export function ProductDetailScreen({route}: ProductDetailScreenProps) {
   const {productId} = route.params;
 
   /**
-   * Si el producto ya está en el cache (se vio en la lista), `data` viene
-   * poblado en el primer render y RTK Query revalida en background. Es el
-   * comportamiento que hace que la navegación se sienta instantánea.
+   * If the product is already in the cache (it was seen in the list), `data`
+   * comes populated on the first render and RTK Query revalidates in the
+   * background. That's the behavior that makes navigation feel instant.
    */
   const {
     data: product,
@@ -38,21 +38,21 @@ export function ProductDetailScreen({route}: ProductDetailScreenProps) {
     return (
       <Screen>
         <ErrorView
-          message="No pudimos cargar el producto."
+          message="We couldn't load the product."
           onRetry={() => refetch().catch(() => {})}
         />
       </Screen>
     );
   }
 
-  // No memoizado a propósito: es una comparación y una concatenación sobre
-  // datos que ya están en memoria (`product`), no un cálculo costoso ni el
-  // resultado de recorrer una colección. Envolverlo en useMemo agregaría un
-  // array de dependencias y una llamada a hook sin que haya evidencia de que
-  // hace falta. La memoización se justifica con una medición, no por reflejo;
-  // acá no hay nada que sugiera que este cálculo importe.
+  // Not memoized on purpose: it's a comparison and a concatenation over data
+  // that's already in memory (`product`), not an expensive computation or
+  // the result of traversing a collection. Wrapping it in useMemo would add
+  // a dependency array and a hook call with no evidence that it's needed.
+  // Memoization is justified by a measurement, not by reflex; there's
+  // nothing here to suggest this computation matters.
   const availability =
-    product.stock > 0 ? `${product.stock} en stock` : 'Sin stock';
+    product.stock > 0 ? `${product.stock} in stock` : 'Out of stock';
 
   return (
     <Screen scroll>

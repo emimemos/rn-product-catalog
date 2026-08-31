@@ -9,16 +9,17 @@ import {colors, spacing, typography} from '@/theme/tokens';
 import {formatPrice} from '@/utils/formatPrice';
 
 /**
- * Cada fila resuelve su producto por id. Si ya está en el cache de RTK Query
- * (porque se vio en el catálogo) se pinta al instante y no hay request; si no,
- * se pide. Guardar solo ids evita que favoritos y catálogo se desincronicen.
+ * Each row resolves its product by id. If it's already in RTK Query's cache
+ * (because it was seen in the catalog) it renders instantly and there's no
+ * request; if not, it's fetched. Storing only ids keeps favorites and the
+ * catalog from going out of sync.
  *
- * El costo de resolver por id es que cada fila tiene su propio estado de error:
- * un producto que se dio de baja del catálogo devuelve 404 y su fila no puede
- * pintarse nunca. Sin una rama de error esa fila se queda en skeleton para
- * siempre, sin explicación y sin salida. El reintento por fila sería falsa
- * esperanza ante un 404, así que la acción que se ofrece es la útil: quitarlo
- * de favoritos.
+ * The cost of resolving by id is that each row has its own error state: a
+ * product that was delisted from the catalog returns a 404 and its row can
+ * never render. Without an error branch that row stays on the skeleton
+ * forever, with no explanation and no way out. A per-row retry would be false
+ * hope against a 404, so the action offered is the useful one: remove it from
+ * favorites.
  */
 function FavoriteRow({productId}: {productId: string}) {
   const {data: product, error, isLoading} = useGetProductQuery(productId);
@@ -32,10 +33,10 @@ function FavoriteRow({productId}: {productId: string}) {
       <View testID={`favorite-error-${productId}`} style={styles.row}>
         <View style={styles.info}>
           <Text numberOfLines={1} style={styles.name}>
-            Producto no disponible
+            Product not available
           </Text>
           <Text style={styles.price}>
-            Ya no está en el catálogo ({productId}).
+            No longer in the catalog ({productId}).
           </Text>
         </View>
         <FavoriteButton productId={productId} />
@@ -63,23 +64,23 @@ export function FavoritesScreen() {
     return (
       <Screen>
         <EmptyState
-          title="Todavía no tenés favoritos"
-          message="Tocá el corazón en el detalle de un producto para guardarlo acá."
+          title="No favorites yet"
+          message="Tap the heart on a product to save it here."
         />
       </Screen>
     );
   }
 
   /**
-   * A diferencia de `ProductListScreen`, acá `renderItem`, `keyExtractor` y
-   * `getItemLayout` van inline y sin memoizar, a propósito. Esta lista no
-   * pagina y no tiene ningún control que re-renderice la pantalla sin que la
-   * lista misma haya cambiado: el único estado del que depende es `ids`, así
-   * que cuando este componente re-renderiza es justamente porque los datos
-   * cambiaron y la lista tiene que rehacerse igual. Memoizar ahí no ahorra
-   * nada; solo agrega hooks y dependencias que hay que mantener en sincronía.
-   * `getItemLayout` tampoco aplica: la fila de error y la fila normal no miden
-   * lo mismo, así que no hay altura fija que declarar.
+   * Unlike `ProductListScreen`, here `renderItem`, `keyExtractor`, and
+   * `getItemLayout` are inline and unmemoized, on purpose. This list doesn't
+   * paginate and has no control that re-renders the screen without the list
+   * itself having changed: the only state it depends on is `ids`, so when
+   * this component re-renders it's precisely because the data changed and the
+   * list has to be rebuilt anyway. Memoizing here saves nothing; it only adds
+   * hooks and dependencies that have to be kept in sync. `getItemLayout`
+   * doesn't apply either: the error row and the normal row don't measure the
+   * same, so there's no fixed height to declare.
    */
   return (
     <Screen>

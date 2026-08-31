@@ -5,7 +5,7 @@ import type {Product} from '@/services/api/types';
 import {colors, radius, spacing, typography} from '@/theme/tokens';
 import {formatPrice} from '@/utils/formatPrice';
 
-/** Altura fija: es lo que habilita `getItemLayout` en la FlatList. */
+/** Fixed height: that's what enables `getItemLayout` on the FlatList. */
 export const PRODUCT_CARD_HEIGHT = 96;
 
 interface ProductCardProps {
@@ -40,13 +40,13 @@ function ProductCardComponent({product, onPress}: ProductCardProps) {
 }
 
 /**
- * `React.memo` evita el re-render mientras `product` y `onPress` lleguen con
- * la misma identidad. La identidad de `onPress` depende de que quien arma
- * `renderItem` (ver `ProductListScreen`) memoice el handler que le pasa acá;
- * medido ahí, la identidad de `renderItem` en sí no influye en esto —
- * `FlatList` la vuelve a invocar en su propio `CellRenderer` de cualquier
- * forma, y esta comparación superficial sigue bloqueando el re-render con las
- * mismas props.
+ * `React.memo` avoids the re-render as long as `product` and `onPress`
+ * arrive with the same identity. `onPress`'s identity depends on whoever
+ * builds `renderItem` (see `ProductListScreen`) memoizing the handler it
+ * passes here; measured there, the identity of `renderItem` itself has no
+ * bearing on this — `FlatList` invokes it again from its own `CellRenderer`
+ * regardless, and this shallow comparison still blocks the re-render given
+ * the same props.
  */
 export const ProductCard = memo(ProductCardComponent);
 

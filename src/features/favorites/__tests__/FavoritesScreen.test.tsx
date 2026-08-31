@@ -6,19 +6,19 @@ import {renderWithProviders} from '@/test/renderWithProviders';
 import {FavoritesScreen} from '../screens/FavoritesScreen';
 
 describe('FavoritesScreen', () => {
-  it('muestra el estado vacío sin favoritos', () => {
+  it('shows the empty state with no favorites', () => {
     renderWithProviders(<FavoritesScreen />);
-    expect(screen.getByText('Todavía no tenés favoritos')).toBeVisible();
+    expect(screen.getByText('No favorites yet')).toBeVisible();
   });
 
-  it('muestra los productos favoritos resueltos desde la API', async () => {
+  it('shows the favorite products resolved from the API', async () => {
     renderWithProviders(<FavoritesScreen />, {
       preloadedState: {favorites: {ids: ['p-001']}},
     });
-    expect(await screen.findByText('Auriculares Nimbus')).toBeVisible();
+    expect(await screen.findByText('Headphones Nimbus')).toBeVisible();
   });
 
-  it('quita un producto de la lista al desmarcarlo', async () => {
+  it('removes a product from the list when unmarked', async () => {
     const {store} = renderWithProviders(<FavoritesScreen />, {
       preloadedState: {favorites: {ids: ['p-001']}},
     });
@@ -26,10 +26,10 @@ describe('FavoritesScreen', () => {
     expect(store.getState().favorites.ids).toEqual([]);
   });
 
-  // Un id guardado cuyo producto ya no existe devuelve 404. Antes esa fila se
-  // quedaba en skeleton para siempre: `isLoading` pasaba a false pero `product`
-  // seguía indefinido, y la única rama que había las trataba igual.
-  it('muestra una fila de error cuando el producto favorito ya no existe', async () => {
+  // A saved id whose product no longer exists returns a 404. That row used to
+  // stay on the skeleton forever: `isLoading` turned false but `product`
+  // stayed undefined, and the only branch that existed treated them the same.
+  it('shows an error row when the favorite product no longer exists', async () => {
     renderWithProviders(<FavoritesScreen />, {
       preloadedState: {favorites: {ids: ['p-inexistente']}},
     });
@@ -37,10 +37,10 @@ describe('FavoritesScreen', () => {
     expect(
       await screen.findByTestId('favorite-error-p-inexistente'),
     ).toBeVisible();
-    expect(screen.getByText('Producto no disponible')).toBeVisible();
+    expect(screen.getByText('Product not available')).toBeVisible();
   });
 
-  it('permite quitar de favoritos un producto que ya no existe', async () => {
+  it('allows removing a product that no longer exists from favorites', async () => {
     const {store} = renderWithProviders(<FavoritesScreen />, {
       preloadedState: {favorites: {ids: ['p-inexistente']}},
     });

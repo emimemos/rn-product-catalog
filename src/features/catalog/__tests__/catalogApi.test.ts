@@ -6,7 +6,7 @@ import {catalogApi} from '../catalogApi';
 const ARGS: ProductsQueryArgs = {q: '', category: 'all', sort: 'name'};
 
 describe('catalogApi', () => {
-  it('trae la primera página', async () => {
+  it('fetches the first page', async () => {
     const store = makeStore();
     const result = await store.dispatch(
       catalogApi.endpoints.getProducts.initiate(ARGS),
@@ -15,7 +15,7 @@ describe('catalogApi', () => {
     expect(result.data?.pages[0]?.items).toHaveLength(10);
   });
 
-  it('acumula páginas al pedir la siguiente', async () => {
+  it('accumulates pages when requesting the next one', async () => {
     const store = makeStore();
     await store.dispatch(catalogApi.endpoints.getProducts.initiate(ARGS));
     const result = await store.dispatch(
@@ -27,7 +27,7 @@ describe('catalogApi', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('cachea las páginas por combinación de filtros', async () => {
+  it('caches pages per filter combination', async () => {
     const store = makeStore();
     await store.dispatch(catalogApi.endpoints.getProducts.initiate(ARGS));
     await store.dispatch(

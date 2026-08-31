@@ -1,9 +1,10 @@
 import {useEffect, useState} from 'react';
 
 /**
- * Retrasa la propagación de `value` hasta que se queda quieto `delayMs`.
- * El `return` del efecto es lo importante: sin él, cada tecla dejaría un timer
- * vivo y el valor se actualizaría varias veces (y después de desmontar).
+ * Delays propagating `value` until it stays still for `delayMs`.
+ * The effect's `return` is what matters: without it, every keystroke would
+ * leave a live timer and the value would update multiple times (and after
+ * unmounting).
  */
 export function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);

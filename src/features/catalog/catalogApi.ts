@@ -2,7 +2,7 @@ import {baseApi} from '@/services/api/baseApi';
 import {PAGE_SIZE} from '@/services/api/config';
 import type {ProductsPage, ProductsQueryArgs} from '@/services/api/types';
 
-/** El cursor es el id del último producto de la página anterior; `null` = primera. */
+/** The cursor is the id of the last product on the previous page; `null` = first. */
 type PageParam = string | null;
 
 export const catalogApi = baseApi.injectEndpoints({
@@ -14,7 +14,7 @@ export const catalogApi = baseApi.injectEndpoints({
     >({
       infiniteQueryOptions: {
         initialPageParam: null,
-        // Devolver `undefined` corta el paginado: es lo que apaga `hasNextPage`.
+        // Returning `undefined` stops pagination: that's what turns `hasNextPage` off.
         getNextPageParam: lastPage => lastPage.nextCursor ?? undefined,
       },
       query: ({queryArg, pageParam}) => ({

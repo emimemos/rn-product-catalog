@@ -15,21 +15,21 @@ function fillAndSubmit(email: string, password: string) {
 }
 
 describe('LoginScreen', () => {
-  it('muestra un error de formato cuando el email es inválido', async () => {
+  it('shows a format error when the email is invalid', async () => {
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('no-es-un-email', 'password123');
-    expect(await screen.findByText('Ingresá un email válido')).toBeVisible();
+    expect(await screen.findByText('Enter a valid email')).toBeVisible();
   });
 
-  it('muestra un error cuando la contraseña es muy corta', async () => {
+  it('shows an error when the password is too short', async () => {
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', '123');
     expect(
-      await screen.findByText('La contraseña debe tener al menos 8 caracteres'),
+      await screen.findByText('Password must be at least 8 characters'),
     ).toBeVisible();
   });
 
-  it('deja el estado en signedIn tras un login exitoso', async () => {
+  it('leaves the state as signedIn after a successful login', async () => {
     const {store} = renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', 'password123');
     await waitFor(() =>
@@ -38,22 +38,22 @@ describe('LoginScreen', () => {
     expect(store.getState().session.accessToken).toBe('demo-access-token');
   });
 
-  it('muestra un mensaje de credenciales inválidas ante un 401', async () => {
+  it('shows an invalid credentials message on a 401', async () => {
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', 'incorrecta1');
     expect(await screen.findByTestId('login-error')).toHaveTextContent(
-      'Email o contraseña incorrectos',
+      'Incorrect email or password',
     );
   });
 
-  it('diferencia el error de red del error de credenciales', async () => {
+  it('tells the network error apart from the credentials error', async () => {
     server.use(
       http.post(`${API_BASE_URL}/auth/login`, () => HttpResponse.error()),
     );
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', 'password123');
     expect(await screen.findByTestId('login-error')).toHaveTextContent(
-      'No pudimos conectarnos. Revisá tu conexión e intentá de nuevo',
+      "We couldn't connect. Check your connection and try again",
     );
   });
 });
