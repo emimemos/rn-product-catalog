@@ -1,4 +1,4 @@
-import {act, fireEvent, screen} from '@testing-library/react-native';
+import {fireEvent, screen} from '@testing-library/react-native';
 import {http, HttpResponse} from 'msw';
 import React from 'react';
 
@@ -23,23 +23,13 @@ function renderDetail(
 }
 
 describe('ProductDetailScreen', () => {
-  /**
-   * El primer caso solo afirma el skeleton y no espera a que la query
-   * resuelva. `useGetProductQuery` sigue en vuelo cuando el test termina, y
-   * su resolución (fetch de msw -> acción `fulfilled` -> notificación del
-   * `autoBatchEnhancer` sobre un microtask, ver `src/test/setup.ts`) cae
-   * fuera del `act()` implícito del test si nadie la espera, y React avisa
-   * con "not wrapped in act". Vaciar la cola de microtasks acá, después de
-   * cada test, hace que esa resolución pendiente quede envuelta en un `act`
-   * antes de que arranque el siguiente test, sin tocar los casos en sí.
-   */
-  afterEach(async () => {
-    await act(async () => {});
-  });
-
-  it('muestra el skeleton mientras carga', () => {
+  it('muestra el skeleton mientras carga', async () => {
     renderDetail('p-001');
     expect(screen.getByTestId('detail-skeleton')).toBeVisible();
+    // Se espera a que la query asiente para que su resolución (fetch de msw
+    // -> acción `fulfilled`) caiga dentro de este test: sin este await llega
+    // después de que el test ya terminó, fuera del `act` de React.
+    expect(await screen.findByTestId('detail-name')).toBeVisible();
   });
 
   it('muestra los datos del producto', async () => {
