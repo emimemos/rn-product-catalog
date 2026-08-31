@@ -110,7 +110,9 @@ token vencido se descubre en la primera pantalla con datos, no en el splash.
 
 ## Convenciones
 
-- Named exports en todos lados, salvo `App` (necesita default export para `AppRegistry`).
+- Named exports en todos lados, con dos excepciones: `App` (necesita default export para
+  `AppRegistry`) y el reducer de cada slice, que se exporta por default siguiendo la convención
+  de RTK — las acciones del mismo slice sí van nombradas.
 - Tests en `__tests__/` junto al código que prueban, no en un directorio `__tests__` global.
 - `testID` en kebab-case (`product-card-${id}`, `login-submit`, `lab-render-count-memo-0`).
 - Imports ordenados por `import/order`: builtins/externos, luego internos (`@/...`), luego
@@ -169,9 +171,9 @@ Unexpected end of input`), un problema de transporte que ningún polyfill adicio
   con un `if`, un valor por defecto o un narrowing explícito.
 
 - **New Architecture (Fabric + TurboModules) está activa por defecto**, no es una bandera que se
-  prendió a mano: `android/gradle.properties` trae `newArchEnabled=true` y el `Podfile` de iOS
-  también la asume, porque así viene el template de RN 0.87.1. El renderer es C++ y no hay bridge
-  asíncrono de por medio.
+  prendió a mano. La evidencia explícita está en `android/gradle.properties` (`newArchEnabled=true`);
+  en iOS no hay ninguna línea del `Podfile` que la mencione, porque RN 0.87.1 la activa dentro de
+  `react_native_pods.rb`. El renderer es C++ y no hay bridge asíncrono de por medio.
 
 - **El bundle de producción no debe poder importar `src/mocks/`.** `metro.config.js` resuelve
   `./msw.polyfills` y `./src/mocks/server.native` a un módulo vacío cuando `context.dev` es falso,

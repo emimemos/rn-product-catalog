@@ -37,7 +37,21 @@ module.exports = {
     '!src/**/__tests__/**',
     '!src/**/*.d.ts',
   ],
+  /**
+   * El umbral se fija apenas por debajo de lo que la suite mide hoy
+   * (98.19 / 96.87 / 90.82 / 98.12): así CI falla cuando se borra un test o se
+   * agrega código sin cubrir, que es lo único que un umbral puede detectar. Un
+   * umbral 25 puntos por debajo de lo real no defiende nada: se podría borrar
+   * un tercio de la suite y seguir en verde.
+   *
+   * El denominador es el de `collectCoverageFrom`: `features/`, `services/` y
+   * `utils/`. Quedan fuera `src/app`, `src/navigation`, `src/components/ui`,
+   * `src/theme`, `src/mocks` y `src/test` — composición, primitivos de
+   * presentación e infraestructura de test. Varios de esos igual se ejercitan
+   * de punta a punta desde los tests de pantalla; lo que no hacen es contar en
+   * el porcentaje.
+   */
   coverageThreshold: {
-    global: {statements: 70, branches: 60, functions: 65, lines: 70},
+    global: {statements: 97, branches: 95, functions: 89, lines: 97},
   },
 };

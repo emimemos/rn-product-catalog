@@ -40,7 +40,10 @@ export const productHandlers = [
       const url = new URL(request.url);
       await maybeDelay();
 
-      // Inyección de fallos para demostrar el manejo de errores en vivo.
+      // Inyección de fallos. No es alcanzable desde la app: la query string
+      // la arma `catalogApi` y no expone este parámetro. Existe para los
+      // tests, y para poder pegarle a mano desde un cliente HTTP contra el
+      // shim de dev sin tocar código.
       if (url.searchParams.get('fail') === '1') {
         return HttpResponse.json<ApiErrorBody>(
           {message: 'Fallo inyectado'},
