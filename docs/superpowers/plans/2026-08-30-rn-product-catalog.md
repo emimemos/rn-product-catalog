@@ -10,6 +10,14 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-30-rn-product-catalog-design.md`
 
+> **Este documento es el plan tal como se escribió antes de implementar, y se conserva
+> como registro.** La implementación lo corrigió en varios puntos: el orden de
+> `addCase`/`addMatcher` en RTK, el arranque de `index.js`, el mock de
+> `react-native-safe-area-context`, la afirmación sobre memoización en `FlatList`
+> (refutada al medirla) y la acción `filtersReset`, que se eliminó por no tener
+> ningún control que la dispare. El código y el README son la fuente de verdad
+> sobre el estado actual; el ADR correspondiente explica cada cambio.
+
 ## Global Constraints
 
 - React Native **0.87.1** (CLI bare, no Expo). Fallback documentado: **0.86.3** si el build nativo falla. La decisión se toma en la Task 1, no después.
