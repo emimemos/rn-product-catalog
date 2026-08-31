@@ -7,6 +7,6 @@ export {
   signOut,
 } from './sessionSlice';
 export type {SessionState} from './sessionSlice';
-export {sessionApi, useLoginMutation, useMeQuery} from './sessionApi';
+export {sessionApi, useLoginMutation} from './sessionApi';
 export {registerSessionListeners} from './sessionListeners';
 export {useSession} from './useSession';

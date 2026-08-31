@@ -93,14 +93,20 @@ acuerde de la regla.
 ## Estado servidor vs. estado cliente
 
 RTK Query (`baseApi`, `catalogApi`/`productsApi`, `sessionApi`) es dueño de todo lo que viene de
-la red: catálogo, detalle de producto, usuario autenticado. Tiene su propio cache, tags,
-deduplicación y estados de carga; no se duplica nada de esto en un slice.
+la red: catálogo, detalle de producto, login. Tiene su propio cache, tags, deduplicación y
+estados de carga; no se duplica nada de esto en un slice.
 
 Los slices de Redux (`catalogSlice`, `favoritesSlice`, `sessionSlice`) guardan únicamente estado
 de cliente: `catalogSlice` guarda la búsqueda/categoría/orden elegidos, no los productos;
 `favoritesSlice` guarda una lista de ids, no los productos favoritos (esos se resuelven leyendo el
 cache de RTK Query — ver la nota de "Favoritos por id" en el README); `sessionSlice` guarda el
-token y el estado de autenticación, no el perfil completo (eso lo trae `sessionApi`).
+token, el estado de autenticación y los datos de usuario que vinieron en la respuesta del login.
+
+No hay endpoint de revalidación de sesión: al arrancar, `restoreSession` confía en el token
+guardado y entra directo a la app. Si ya no sirve, la primera request autenticada devuelve 401 y
+el wrapper del `baseQuery` despacha `unauthorized`, que limpia sesión y favoritos. La validación
+es perezosa a propósito — no hay una request bloqueante en cada arranque — y el costo es que un
+token vencido se descubre en la primera pantalla con datos, no en el splash.
 
 ## Convenciones
 

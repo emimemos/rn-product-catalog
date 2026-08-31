@@ -1,6 +1,5 @@
 import catalogReducer, {
   categoryChanged,
-  filtersReset,
   queryChanged,
   sortChanged,
 } from '../catalogSlice';
@@ -29,14 +28,5 @@ describe('catalogSlice', () => {
     expect(catalogReducer(initial, sortChanged('price_desc')).sort).toBe(
       'price_desc',
     );
-  });
-
-  it('resetea todos los filtros', () => {
-    const dirty: CatalogState = {
-      query: 'x',
-      category: 'gaming',
-      sort: 'price_asc',
-    };
-    expect(catalogReducer(dirty, filtersReset())).toEqual(initial);
   });
 });

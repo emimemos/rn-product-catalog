@@ -24,19 +24,6 @@ describe('handlers de auth', () => {
     });
     expect(response.status).toBe(401);
   });
-
-  it('GET /auth/me devuelve 401 sin Authorization', async () => {
-    const response = await fetch(`${API_BASE_URL}/auth/me`);
-    expect(response.status).toBe(401);
-  });
-
-  it('GET /auth/me devuelve el usuario con un token válido', async () => {
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
-      headers: {Authorization: 'Bearer demo-access-token'},
-    });
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual(DEMO_USER);
-  });
 });
 
 describe('handlers de productos', () => {

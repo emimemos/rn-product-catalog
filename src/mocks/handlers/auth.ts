@@ -5,7 +5,6 @@ import type {
   ApiErrorBody,
   LoginRequest,
   LoginResponse,
-  User,
 } from '@/services/api/types';
 
 import {DEMO_PASSWORD, DEMO_USER} from '../db';
@@ -47,22 +46,6 @@ export const authHandlers = [
         accessToken: ACCESS_TOKEN,
         user: DEMO_USER,
       });
-    },
-  ),
-
-  http.get<never, never, ApiErrorBody | User>(
-    `${API_BASE_URL}/auth/me`,
-    async ({request}) => {
-      await maybeDelay();
-
-      if (request.headers.get('Authorization') !== `Bearer ${ACCESS_TOKEN}`) {
-        return HttpResponse.json<ApiErrorBody>(
-          {message: 'No autorizado'},
-          {status: 401},
-        );
-      }
-
-      return HttpResponse.json<User>(DEMO_USER);
     },
   ),
 ];

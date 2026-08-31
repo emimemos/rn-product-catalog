@@ -32,12 +32,9 @@ const catalogSlice = createSlice({
     sortChanged(state, action: PayloadAction<SortOption>) {
       state.sort = action.payload;
     },
-    filtersReset() {
-      return initialState;
-    },
   },
 });
 
-export const {categoryChanged, filtersReset, queryChanged, sortChanged} =
+export const {categoryChanged, queryChanged, sortChanged} =
   catalogSlice.actions;
 export default catalogSlice.reducer;
