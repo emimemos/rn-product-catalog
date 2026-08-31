@@ -20,4 +20,14 @@ describe('formatPrice', () => {
   it('agrega separador de miles', () => {
     expect(formatPrice(123456)).toBe('$1,234.56');
   });
+
+  // `Math.trunc(-50 / 100)` es `-0`, que se imprime como `0`: sin separar el
+  // signo, un importe negativo menor a un dólar salía idéntico al positivo.
+  it('conserva el signo de un importe negativo menor a un dólar', () => {
+    expect(formatPrice(-50)).toBe('-$0.50');
+  });
+
+  it('conserva el signo de un importe negativo mayor a un dólar', () => {
+    expect(formatPrice(-123456)).toBe('-$1,234.56');
+  });
 });

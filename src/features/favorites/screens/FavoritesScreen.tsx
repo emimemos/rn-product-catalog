@@ -12,12 +12,35 @@ import {formatPrice} from '@/utils/formatPrice';
  * Cada fila resuelve su producto por id. Si ya está en el cache de RTK Query
  * (porque se vio en el catálogo) se pinta al instante y no hay request; si no,
  * se pide. Guardar solo ids evita que favoritos y catálogo se desincronicen.
+ *
+ * El costo de resolver por id es que cada fila tiene su propio estado de error:
+ * un producto que se dio de baja del catálogo devuelve 404 y su fila no puede
+ * pintarse nunca. Sin una rama de error esa fila se queda en skeleton para
+ * siempre, sin explicación y sin salida. El reintento por fila sería falsa
+ * esperanza ante un 404, así que la acción que se ofrece es la útil: quitarlo
+ * de favoritos.
  */
 function FavoriteRow({productId}: {productId: string}) {
-  const {data: product, isLoading} = useGetProductQuery(productId);
+  const {data: product, error, isLoading} = useGetProductQuery(productId);
 
-  if (isLoading || product == null) {
+  if (isLoading) {
     return <Skeleton height={64} />;
+  }
+
+  if (error != null || product == null) {
+    return (
+      <View testID={`favorite-error-${productId}`} style={styles.row}>
+        <View style={styles.info}>
+          <Text numberOfLines={1} style={styles.name}>
+            Producto no disponible
+          </Text>
+          <Text style={styles.price}>
+            Ya no está en el catálogo ({productId}).
+          </Text>
+        </View>
+        <FavoriteButton productId={productId} />
+      </View>
+    );
   }
 
   return (
@@ -47,6 +70,17 @@ export function FavoritesScreen() {
     );
   }
 
+  /**
+   * A diferencia de `ProductListScreen`, acá `renderItem`, `keyExtractor` y
+   * `getItemLayout` van inline y sin memoizar, a propósito. Esta lista no
+   * pagina y no tiene ningún control que re-renderice la pantalla sin que la
+   * lista misma haya cambiado: el único estado del que depende es `ids`, así
+   * que cuando este componente re-renderiza es justamente porque los datos
+   * cambiaron y la lista tiene que rehacerse igual. Memoizar ahí no ahorra
+   * nada; solo agrega hooks y dependencias que hay que mantener en sincronía.
+   * `getItemLayout` tampoco aplica: la fila de error y la fila normal no miden
+   * lo mismo, así que no hay altura fija que declarar.
+   */
   return (
     <Screen>
       <FlatList
