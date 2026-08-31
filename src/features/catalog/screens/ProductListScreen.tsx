@@ -32,9 +32,12 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
   } = useGetProductsInfiniteQuery(queryArgs);
 
   /**
-   * Nivel 1 de la demo de memoización: aplanar las páginas es O(n) y corre en
-   * cada render del padre —incluido cada tecla del buscador— si no se
-   * memoiza. La dependencia es `currentData?.pages`, no `currentData`.
+   * Aplanar las páginas es O(n) sobre `currentData.pages`. `useMemo` con
+   * `currentData?.pages` como dependencia (no `currentData`) evita repetir
+   * ese trabajo en renders donde los datos no cambiaron — por ejemplo, cada
+   * tecla del buscador antes de que la nueva query resuelva. No se midió el
+   * costo de no memoizar esto; la justificación es evitar una recomputación
+   * innecesaria, no una medición de framerate.
    *
    * Se usa `currentData` (datos para los argumentos actuales) en vez de
    * `data` (que RTK Query mantiene con el último resultado exitoso aunque
@@ -53,9 +56,20 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
   );
 
   /**
-   * Nivel 2: `renderItem` estable vía `useCallback`. Si se recreara en cada
-   * render, `ProductCard` recibiría una prop `onPress` con identidad nueva y
-   * el `React.memo` del nivel 3 no evitaría el re-render igual.
+   * Medido instrumentando el render de `ProductCard`: tipear en el buscador
+   * dispara 10 renders de `renderItem` con este `useCallback` puesto y 10 sin
+   * él; forzar 5 re-renders del padre sin cambiar los datos da 0 renders de
+   * `ProductCard` en ambos casos. La identidad de `renderItem` no es lo que
+   * evita que `ProductCard` se re-renderice: `FlatList` envuelve cada fila en
+   * un `CellRenderer` (`PureComponent`) que vuelve a ejecutar `renderItem`
+   * igual, pero como `product` y `onPress` llegan con la misma identidad, el
+   * `React.memo` de `ProductCard` sigue bloqueando el re-render. Lo que
+   * sostiene esa identidad es `onPressProduct` memoizado arriba.
+   *
+   * Memoizar `renderItem` sigue valiendo la pena, pero por otra razón: sin
+   * `useCallback` cambia de identidad en cada render del padre y fuerza a los
+   * `CellRenderer` internos de la lista a re-renderizarse —aunque las cards
+   * no lo hagan—, que sigue siendo trabajo de más.
    */
   const renderItem = useCallback<ListRenderItem<Product>>(
     ({item}) => <ProductCard product={item} onPress={onPressProduct} />,

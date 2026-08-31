@@ -40,10 +40,13 @@ function ProductCardComponent({product, onPress}: ProductCardProps) {
 }
 
 /**
- * `React.memo` acá es inútil por sí solo: si `renderItem` se recrea en cada
- * render del padre, la prop `onPress` cambia de identidad y la comparación
- * superficial falla igual. Las tres piezas (memo + useCallback en renderItem +
- * keyExtractor estable) solo funcionan juntas.
+ * `React.memo` evita el re-render mientras `product` y `onPress` lleguen con
+ * la misma identidad. La identidad de `onPress` depende de que quien arma
+ * `renderItem` (ver `ProductListScreen`) memoice el handler que le pasa acá;
+ * medido ahí, la identidad de `renderItem` en sí no influye en esto —
+ * `FlatList` la vuelve a invocar en su propio `CellRenderer` de cualquier
+ * forma, y esta comparación superficial sigue bloqueando el re-render con las
+ * mismas props.
  */
 export const ProductCard = memo(ProductCardComponent);
 
