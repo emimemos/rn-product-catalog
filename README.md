@@ -2,194 +2,189 @@
 
 [![CI](https://github.com/emimemos/rn-product-catalog/actions/workflows/ci.yml/badge.svg)](https://github.com/emimemos/rn-product-catalog/actions/workflows/ci.yml)
 
-## Qué es
+## What this is
 
-Un catálogo de productos en React Native (CLI bare, sin Expo): login, lista con búsqueda,
-filtros, orden y paginado infinito, detalle de producto, favoritos persistidos y una pantalla de
-perfil con un laboratorio de performance que mide memoización en vivo. No hay backend real: un
-mock server en memoria (MSW) sirve los mismos handlers en desarrollo y en los tests.
+A product catalog in React Native (bare CLI, no Expo): login, a list with search, filters,
+sorting and infinite pagination, product detail, persisted favorites, and a profile screen with
+a performance lab that measures memoization live. There's no real backend: an in-memory mock
+server (MSW) serves the same handlers in development and in tests.
 
-Está construido como pieza de portfolio para conversaciones técnicas de React Native: cada
-decisión de arquitectura, memoización o tradeoff está pensada para poder explicarse en voz alta y
-señalarse en un archivo concreto, no solo describirse en abstracto. Este documento y `CLAUDE.md`
-son el mapa para hacer eso.
+It's built as a portfolio piece for React Native technical interviews: every architecture
+decision, memoization choice, or tradeoff is meant to be explainable out loud and pointed at in a
+concrete file, not just described in the abstract. This document and `CLAUDE.md` are the map for
+doing that.
 
-## Setup desde clon limpio
+## Setup from a clean clone
 
-Requisitos: Node ≥ 22.11 (ver `engines` en `package.json`; CI corre en Node 22 — el desarrollo
-local se probó también en Node 20.19, con warnings de `engines` pero sin fallas), JDK 17 para
-Android, Xcode reciente para iOS.
+Requirements: Node ≥ 22.11 (see `engines` in `package.json`; CI runs on Node 22 — local
+development was also tested on Node 20.19, with `engines` warnings but no failures), JDK 17 for
+Android, a recent Xcode for iOS.
 
 ```bash
 npm ci
 
-# CocoaPods se corre con el Gemfile del repo, no con el pod global: el Gemfile
-# pinea la versión y `.bundle/config` instala las gemas en vendor/bundle.
+# CocoaPods runs with the repo's Gemfile, not the global pod: the Gemfile
+# pins the version and `.bundle/config` installs the gems into vendor/bundle.
 bundle install
 bundle exec pod install --project-directory=ios
 
-npm run ios       # o: npm run android
+npm run ios       # or: npm run android
 ```
 
-`npm run lint`, `npm run typecheck` y `npm test -- --coverage` son los tres comandos que corre
-`.github/workflows/ci.yml`, en Node 22; deberían pasar en verde sin ningún paso manual además de
-los de arriba. El badge de arriba refleja
-el estado de la última corrida.
+`npm run lint`, `npm run typecheck`, and `npm test -- --coverage` are the three commands that
+`.github/workflows/ci.yml` runs, on Node 22; they should pass clean with no manual step beyond the
+ones above. The badge above reflects the state of the latest run.
 
-**Solo iOS fue verificado corriendo nativamente en esta máquina** (no hay `ANDROID_HOME`
-configurado). El código de Android no tiene ninguna rama distinta de la de iOS — mismo JS, mismo
-bridge de New Architecture — pero el build de Android en sí no se ejecutó ni se vio correr en un
-emulador.
+**Only iOS was verified running natively on this machine** (there's no `ANDROID_HOME`
+configured). The Android code has no branch that diverges from iOS — same JS, same New
+Architecture bridge — but the Android build itself was never run, nor seen running on an
+emulator.
 
-## Credenciales de demo
+## Demo credentials
 
 ```
 demo@catalog.dev / password123
 ```
 
-Están fijadas en `src/features/auth/demoCredentials.ts` (usadas por la UI, bajo `__DEV__`) y en
-`src/mocks/db.ts` (usadas por el mock server). Un test (`demoCredentials.test.ts`) compara ambos
-archivos para que no diverjan — son dos copias a propósito, no un import compartido; ver ADR-005
-y la nota de "Aislamiento de mocks" más abajo.
+These are fixed in `src/features/auth/demoCredentials.ts` (used by the UI, under `__DEV__`) and
+in `src/mocks/db.ts` (used by the mock server). A test (`demoCredentials.test.ts`) compares both
+files so they don't diverge — they're two copies on purpose, not a shared import; see ADR-005
+and the "mock isolation" note below.
 
-## Capturas
+## Screenshots
 
-| Login                                | Catálogo                                  | Detalle                                 |
-| ------------------------------------ | ----------------------------------------- | --------------------------------------- |
-| ![Login](docs/screenshots/login.png) | ![Catálogo](docs/screenshots/catalog.png) | ![Detalle](docs/screenshots/detail.png) |
+| Login                                | Catalog                                  | Details                                 |
+| ------------------------------------ | ---------------------------------------- | --------------------------------------- |
+| ![Login](docs/screenshots/login.png) | ![Catalog](docs/screenshots/catalog.png) | ![Details](docs/screenshots/detail.png) |
 
-| Favoritos                                    | Performance Lab                                          |
+| Favorites                                    | Performance Lab                                          |
 | -------------------------------------------- | -------------------------------------------------------- |
-| ![Favoritos](docs/screenshots/favorites.png) | ![Performance Lab](docs/screenshots/performance-lab.png) |
+| ![Favorites](docs/screenshots/favorites.png) | ![Performance Lab](docs/screenshots/performance-lab.png) |
 
-La del Performance Lab es la más útil para leer: se tipearon 5 caracteres en el campo de arriba y
-quedó **"Renders del padre: 6"** (1 render inicial + 5 por cada tecla). La columna **Sin
-memoizar** subió a 6 en las 8 filas; la columna **Memoizada** se quedó en 1 en las 8. Mismo padre
-re-renderizando 6 veces, resultado opuesto según si la fila está memoizada y recibe props
-estables. Verificado en vivo en simulador, no solo en el test unitario de la pantalla.
+The Performance Lab one is the most useful to read: 5 characters were typed into the field above
+and it landed on **"Parent renders: 6"** (1 initial render + 5 per keystroke). The **Not
+memoized** column climbed to 6 across all 8 rows; the **Memoized** column stayed at 1 across all 8. Same parent re-rendering 6 times, opposite result depending on whether the row is memoized and
+receives stable props. Verified live on the simulator, not just in the screen's unit test.
 
-También se verificó en simulador, además de en los tests: el catálogo carga mostrando su
-skeleton antes de tener datos; la búsqueda filtra la lista tecla por tecla con debounce (tipear
-"atlas" deja solo "Auriculares Atlas", "Gamepad Atlas" y "Lámpara Atlas" visibles); hacer scroll
-hasta el final de la lista trae más páginas — el catálogo completo excede una sola página y se
-lo comprobó llegando a productos "Smartwatch" muy por debajo alfabéticamente de los primeros
-"Auriculares"; y favoritos resuelve desde el cache de RTK Query, sin request nuevo, cuando el
-producto ya se vio en la lista. El gesto de pull-to-refresh se ejecutó sin errores ni cuelgues,
-pero como los datos del mock son estáticos, la captura de pantalla no puede distinguir
-visualmente un refetch exitoso de un no-op.
+It was also verified on the simulator, in addition to in the tests: the catalog loads showing its
+skeleton before it has data; search filters the list keystroke by keystroke with debounce (typing
+"atlas" leaves only "Headphones Atlas", "Gamepad Atlas", and "Lamp Atlas" visible); scrolling to
+the end of the list brings in more pages — the full catalog exceeds a single page, and this was
+confirmed by reaching "Smartwatch" products far below alphabetically from the first "Gamepad"
+ones; and favorites resolves from the RTK Query cache, with no new request, when the product was
+already seen in the list. The pull-to-refresh gesture ran without errors or hangs, but since the
+mock data is static, the screenshot can't visually distinguish a successful refetch from a no-op.
 
-Esa es justamente la clase de afirmación que una captura no puede sostener y un test sí, así que
-las tres interacciones de la lista se prueban contando requests, no mirando píxeles
-(`ProductListScreen.test.tsx`, bloque "requests que dispara cada interacción"): el conteo sale
-del stream de eventos de msw, contra los mismos handlers que sirven al resto de la suite.
-Pull-to-refresh dispara exactamente una request más y con la misma URL —un refetch, no una
-página nueva—; el botón de reintento tras un 500 vuelve a pedir y pinta la lista; llegar al final
-pide la página siguiente con `cursor=p-010`, el id de la última fila visible, y la lista pasa de
-10 a 20 items; y con un filtro cuyo resultado entra en una sola página, llegar al final no
-dispara nada. Las tres primeras fallan si se vacía el handler que les corresponde — se comprobó
-mutándolos.
+That's exactly the kind of claim a screenshot can't back up and a test can, so the list's three
+interactions are tested by counting requests, not by looking at pixels
+(`ProductListScreen.test.tsx`, the "requests each interaction triggers" block): the count comes
+from msw's event stream, against the same handlers that serve the rest of the suite.
+Pull-to-refresh fires exactly one more request, with the same URL — a refetch, not a new page;
+the retry button after a 500 requests again and repaints the list; reaching the end requests the
+next page with `cursor=p-010`, the id of the last visible row, and the list goes from 10 to 20
+items; and with a filter whose result fits on a single page, reaching the end fires nothing. The
+first three fail if the handler backing them is emptied out — this was confirmed by doing exactly
+that.
 
-## Notas de entrevista
+## Interview notes
 
-Cada fila apunta a un archivo real del repo.
+Each row points to a real file in the repo.
 
-| Tema                               | Dónde está                                                                                 | Respuesta corta                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ---------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| New Architecture                   | `android/gradle.properties`                                                                | Fabric + TurboModules activos por defecto desde RN 0.76 (acá, RN 0.87.1). Renderer en C++, sin el bridge asíncrono clásico. La evidencia explícita en el repo es `newArchEnabled=true` en Android; en iOS no hay ninguna línea del `Podfile` que lo mencione, porque RN 0.87 lo activa dentro de `react_native_pods.rb`.                                                                                                                                                                                                                                                                                                                                                                                   |
-| Memoización nivel 1                | `src/features/catalog/screens/ProductListScreen.tsx`                                       | Medido, no asumido: dentro de `FlatList`, `useCallback` en `renderItem` no cambia cuántas veces renderiza `ProductCard` (10 renders con y sin memoizar al tipear en el buscador; 0 y 0 forzando re-renders del padre sin cambiar datos). La razón es que `FlatList` ya envuelve cada fila en un `CellRenderer` que es `PureComponent`. Lo que sí sostiene la memoización es que `onPressProduct` esté memoizado, manteniendo estables las props de la fila; el `useCallback` en `renderItem` se conserva por otra razón, más acotada: evita re-renderizar los wrappers internos de la lista.                                                                                                               |
-| Memoización nivel 2                | `src/features/catalog/selectors.ts`                                                        | Los dos lados de la misma regla, en un archivo: `selectProductsQueryArgs` arma un objeto nuevo y va con `createSelector`, porque sin él la identidad cambia en cada llamada y dispara un re-render por dispatch tenga o no relación el cambio. `selectHasActiveFilters`, al lado, devuelve un boolean y **no** se memoiza: `useSelector` compara con `===` y un primitivo no cambia de identidad sin cambiar de valor. Lo que decide no es que el selector sea derivado, es si devuelve una referencia nueva (mismo criterio en `src/services/favorites/selectors.ts`).                                                                                                                                    |
-| Memoización nivel 3                | `src/features/profile/screens/PerformanceLabScreen.tsx`                                    | Sin `FlatList` de por medio, mapeando filas directas, la estabilidad de props sí decide todo: la columna sin memoizar sube a la par del padre, la memoizada se queda quieta. Es el contraste que muestra por qué el resultado del nivel 1 no se generaliza a cualquier lista.                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Cuándo NO memoizar                 | `src/features/catalog/screens/ProductDetailScreen.tsx`                                     | Un cálculo barato (una comparación y una concatenación sobre datos ya en memoria) queda deliberadamente sin `useMemo`, con un comentario que explica el motivo estructural sin inventar una medición que no se hizo.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Custom hook con cleanup            | `src/features/catalog/hooks/useDebouncedValue.ts`                                          | El `return` del `useEffect` cancela el timer pendiente; sin él, cada tecla dejaría un timer colgado corriendo después de que el valor ya cambió de nuevo.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| RTK Query vs. Context              | `src/services/api/baseApi.ts`, `src/features/catalog/catalogApi.ts`                        | Cache, tags, deduplicación de requests y estados de carga (`isLoading`/`isFetching`/`error`) vienen gratis. Context no es un sistema de cache: sin esto habría que reimplementar todo eso a mano.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Estado servidor vs. cliente        | `src/features/catalog/catalogSlice.ts`                                                     | El slice guarda la búsqueda, la categoría y el orden elegidos — nunca productos. Los productos viven solo en el cache de RTK Query.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Paginado infinito                  | `src/features/catalog/catalogApi.ts`                                                       | `infiniteQuery` con cursor; `getNextPageParam` devuelve `undefined` cuando no hay más páginas, que es la señal que corta el scroll infinito.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Navegación tipada                  | `src/navigation/types.ts`                                                                  | Un `ParamList` por navigator más un `declare global` que amplía `ReactNavigation.RootParamList`, así `navigation.navigate` tipa sus argumentos en toda la app sin castear.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Manejo de 401                      | `src/services/api/baseApi.ts`, `src/services/api/sessionEvents.ts`                         | Un wrapper sobre el `baseQuery` detecta el 401 y despacha un action creator neutral (`unauthorized`) en vez de importar `sessionSlice` directamente — así `services/` no depende de `features/`. Ese mismo camino es el que valida el token restaurado: al arrancar, `restoreSession` confía en lo que haya en storage y entra directo a la app, sin pedirle nada al servidor. Si ese token ya no sirve, la primera request autenticada devuelve 401 y saca al usuario. Es validación perezosa a propósito: evita una request bloqueante en cada arranque y un estado de "revalidando" en el splash, a cambio de que un token vencido se descubra un instante más tarde, en la primera pantalla con datos. |
-| Seguridad del token                | `src/services/storage/asyncStorage.ts`                                                     | AsyncStorage **no está cifrado**: guarda el token como texto plano en el sandbox de la app. En un dispositivo con jailbreak/root, o en un backup sin cifrar, el token es legible. Está detrás de una interfaz `Storage` (ver ADR-003) justamente para que reemplazarlo por Keychain/EncryptedSharedPreferences sea cambiar un archivo, no reescribir la app.                                                                                                                                                                                                                                                                                                                                               |
-| Persistencia sin ensuciar reducers | `src/services/session/sessionListeners.ts`, `src/services/favorites/favoritesListeners.ts` | `createListenerMiddleware` separa el efecto secundario (escribir en storage) del reducer, que queda puro y síncrono. Un solo mecanismo por efecto: el thunk de logout limpia el slice y el cache, y son los listeners los que borran el storage — así el 401, que nunca pasa por el thunk, limpia exactamente lo mismo. Los dos archivos `__tests__/*Listeners.test.ts` afirman sobre el storage y no sobre el store: si se vacía el cuerpo de cualquiera de los cuatro efectos, falla un test.                                                                                                                                                                                                            |
-| Favoritos por id                   | `src/services/favorites/selectors.ts`, `src/services/favorites/favoritesSlice.ts`          | Se persiste solo una lista de ids, no los productos. Verificado en vivo: un producto ya visto en el catálogo (y por lo tanto en el cache de RTK Query) aparece en Favoritos sin disparar ningún request nuevo; un id sin ese producto en cache sí dispara uno.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| MSW                                | `src/mocks/`                                                                               | Los mismos handlers alimentan tests y dev: una sola fuente de verdad para el contrato de la API. Cómo llega ese contrato a la app en cada entorno cambió durante la implementación — ver ADR-005.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Performance de listas              | `src/features/catalog/screens/ProductListScreen.tsx`                                       | `getItemLayout` con altura fija (sin medir cada fila, scroll a índice es O(1)) y `keyExtractor` estable, los dos en la pantalla; la fila en sí (`components/ProductCard.tsx`) va envuelta en `React.memo`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Estrategia de testing              | `src/features/catalog/__tests__/ProductListScreen.test.tsx`                                | Integración real contra MSW — sin mockear el store ni la red a mano — cubriendo loading → datos → búsqueda → vacío → error → reintento, más pull-to-refresh y scroll infinito verificados por número de requests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Escala a muchas pantallas          | `eslint.config.js`                                                                         | Las reglas "una feature no importa de otra feature" y "`services/` no importa de `features/`" están enforceadas por `import/no-restricted-paths`, que resuelve cada import a un archivo antes de compararlo, así que el alias y la ruta relativa fallan igual. No es disciplina de code review.                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Topic                                  | Where it is                                                                                | Short answer                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| New Architecture                       | `android/gradle.properties`                                                                | Fabric + TurboModules active by default since RN 0.76 (here, RN 0.87.1). Renderer in C++, no classic async bridge. The explicit evidence in the repo is `newArchEnabled=true` on Android; on iOS there's no line in the `Podfile` that mentions it, because RN 0.87 turns it on inside `react_native_pods.rb`.                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Memoization level 1                    | `src/features/catalog/screens/ProductListScreen.tsx`                                       | Measured, not assumed: inside `FlatList`, `useCallback` on `renderItem` doesn't change how many times `ProductCard` renders (10 renders with and without memoization when typing in the search box; 0 and 0 when forcing parent re-renders without changing data). The reason is that `FlatList` already wraps each row in a `CellRenderer` that is a `PureComponent`. What does hold up the memoization is `onPressProduct` being memoized, keeping the row's props stable; the `useCallback` on `renderItem` is kept for a different, narrower reason: it avoids re-rendering the list's internal wrappers.                                                                                                                  |
+| Memoization level 2                    | `src/features/catalog/selectors.ts`                                                        | Both sides of the same rule, in one file: `selectProductsQueryArgs` builds a new object and needs `createSelector`, because without it the identity changes on every call and triggers a re-render on every dispatch whether or not the change is related. `selectHasActiveFilters`, right next to it, returns a boolean and is **not** memoized: `useSelector` compares with `===`, and a primitive doesn't change identity without changing value. What decides this isn't whether the selector is derived, it's whether it returns a new reference (same criterion in `src/services/favorites/selectors.ts`).                                                                                                               |
+| Memoization level 3                    | `src/features/profile/screens/PerformanceLabScreen.tsx`                                    | With no `FlatList` in the mix, mapping rows directly, prop stability is what decides everything: the not-memoized column climbs in lockstep with the parent, the memoized one stays put. It's the contrast that shows why the level-1 result doesn't generalize to just any list.                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| When NOT to memoize                    | `src/features/catalog/screens/ProductDetailScreen.tsx`                                     | A cheap computation (a comparison and a string concatenation over data already in memory) is deliberately left without `useMemo`, with a comment explaining the structural reason without inventing a measurement that was never made.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Custom hook with cleanup               | `src/features/catalog/hooks/useDebouncedValue.ts`                                          | The `return` from `useEffect` cancels the pending timer; without it, every keystroke would leave a dangling timer still running after the value had already changed again.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| RTK Query vs. Context                  | `src/services/api/baseApi.ts`, `src/features/catalog/catalogApi.ts`                        | Cache, tags, request deduplication, and loading states (`isLoading`/`isFetching`/`error`) come for free. Context isn't a cache system: without this, all of that would have to be reimplemented by hand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Server state vs. client state          | `src/features/catalog/catalogSlice.ts`                                                     | The slice stores the chosen search, category, and sort order — never products. Products live only in the RTK Query cache.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Infinite pagination                    | `src/features/catalog/catalogApi.ts`                                                       | `infiniteQuery` with a cursor; `getNextPageParam` returns `undefined` when there are no more pages, which is the signal that cuts off infinite scroll.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Typed navigation                       | `src/navigation/types.ts`                                                                  | One `ParamList` per navigator plus a `declare global` that extends `ReactNavigation.RootParamList`, so `navigation.navigate` types its arguments across the whole app without casting.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 401 handling                           | `src/services/api/baseApi.ts`, `src/services/api/sessionEvents.ts`                         | A wrapper around `baseQuery` detects the 401 and dispatches a neutral action creator (`unauthorized`) instead of importing `sessionSlice` directly — that way `services/` doesn't depend on `features/`. That same path is what validates the restored token: on startup, `restoreSession` trusts whatever is in storage and drops straight into the app, without asking the server anything. If that token no longer works, the first authenticated request returns a 401 and logs the user out. It's lazy validation on purpose: it avoids a blocking request on every startup and a "revalidating" state on the splash screen, at the cost of a stale token being discovered a moment later, on the first screen with data. |
+| Token security                         | `src/services/storage/asyncStorage.ts`                                                     | AsyncStorage is **not encrypted**: it stores the token as plain text in the app's sandbox. On a jailbroken/rooted device, or in an unencrypted backup, the token is readable. It sits behind a `Storage` interface (see ADR-003) precisely so that replacing it with Keychain/EncryptedSharedPreferences means changing one file, not rewriting the app.                                                                                                                                                                                                                                                                                                                                                                       |
+| Persistence without polluting reducers | `src/services/session/sessionListeners.ts`, `src/services/favorites/favoritesListeners.ts` | `createListenerMiddleware` separates the side effect (writing to storage) from the reducer, which stays pure and synchronous. One mechanism per effect: the logout thunk clears the slice and the cache, and it's the listeners that clear storage — so the 401, which never goes through the thunk, clears exactly the same thing. The two `__tests__/*Listeners.test.ts` files make assertions about storage, not about the store: emptying the body of any of the four effects fails a test.                                                                                                                                                                                                                                |
+| Favorites by id                        | `src/services/favorites/selectors.ts`, `src/services/favorites/favoritesSlice.ts`          | Only a list of ids is persisted, not the products. Verified live: a product already seen in the catalog (and therefore in the RTK Query cache) shows up in Favorites without triggering any new request; an id without that product in cache does trigger one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| MSW                                    | `src/mocks/`                                                                               | The same handlers feed both tests and dev: a single source of truth for the API contract. How that contract reaches the app in each environment changed during implementation — see ADR-005.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| List performance                       | `src/features/catalog/screens/ProductListScreen.tsx`                                       | `getItemLayout` with a fixed height (no measuring each row, scroll-to-index is O(1)) and a stable `keyExtractor`, both in the screen; the row itself (`components/ProductCard.tsx`) is wrapped in `React.memo`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Testing strategy                       | `src/features/catalog/__tests__/ProductListScreen.test.tsx`                                | Real integration against MSW — without hand-mocking the store or the network — covering loading → data → search → empty → error → retry, plus pull-to-refresh and infinite scroll verified by request count.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Scaling to many screens                | `eslint.config.js`                                                                         | The rules "a feature doesn't import from another feature" and "`services/` doesn't import from `features/`" are enforced by `import/no-restricted-paths`, which resolves every import to a file before comparing it, so the alias and the relative path fail equally. It's not code review discipline.                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 ## ADRs
 
-Decisiones de fondo y sus tradeoffs. Las cinco fueron escritas en el diseño original; dos
-cambiaron al implementarse, y acá quedan con lo que efectivamente pasó.
+Substantive decisions and their tradeoffs. All five were written in the original design; two
+changed during implementation, and here they stand with what actually happened.
 
-**ADR-001 — RN CLI bare en vez de Expo.**
-Expo habría sido más rápido y estable de levantar. Se eligió bare para poder hablar de
-autolinking, Podfile, Gradle y New Architecture en una entrevista de RN. Costo aceptado: setup más
-frágil (ver ADR-002 y la nota de MSW en ADR-005, ambos síntomas de ese costo).
+**ADR-001 — Bare RN CLI instead of Expo.**
+Expo would have been faster and more stable to stand up. Bare was chosen to be able to talk about
+autolinking, Podfile, Gradle, and New Architecture in an RN interview. Accepted cost: a more
+fragile setup (see ADR-002 and the MSW note in ADR-005, both symptoms of that cost).
 
-**ADR-002 — Toolchain pineado en vez de las versiones más nuevas de cada pieza.**
-_Revisado tras la implementación._ El plan original fijaba TypeScript 5.x, ESLint 10 y Jest 30. El
-template de RN 0.87.1 trae en cambio **TypeScript 6.0.3, ESLint 8.57.1 y Jest 29.7.0**, y se
-aceptaron esas versiones en vez de forzar las del plan: forzar pines contra lo que el propio
-template resuelve como compatible habría sido exactamente la fragilidad que esta decisión buscaba
-evitar. Lo sustantivo se sostiene igual: **no** TypeScript 7.x (el port a Go), porque su
-compatibilidad con `typescript-eslint` y los tipos de RN no estaba asentada al momento de decidir.
+**ADR-002 — A pinned toolchain instead of the newest version of each piece.**
+_Revised after implementation._ The original plan fixed TypeScript 5.x, ESLint 10, and Jest 30.
+The RN 0.87.1 template instead ships **TypeScript 6.0.3, ESLint 8.57.1, and Jest 29.7.0**, and
+those versions were accepted instead of forcing the plan's: forcing pins against what the
+template itself resolves as compatible would have been exactly the fragility this decision was
+meant to avoid. The substance still holds: **not** TypeScript 7.x (the Go port), because its
+compatibility with `typescript-eslint` and RN's types wasn't settled at the time of deciding.
 
-**ADR-003 — AsyncStorage en vez de Keychain para el token.**
-`react-native-keychain` es lo correcto en producción (Keychain en iOS, EncryptedSharedPreferences
-en Android). Se eligió AsyncStorage para minimizar dependencias nativas y reducir el riesgo de que
-el build se rompiera durante el desarrollo. El costo se declara sin vueltas: **AsyncStorage no
-está cifrado**. El token queda en texto plano en el sandbox de la app; en un dispositivo con
-jailbreak o root, o leyendo un backup sin cifrar, es legible. Está detrás de una interfaz
-`Storage` (`src/services/storage/types.ts`) para que cambiarlo sea reemplazar un archivo, no
-reescribir la app.
+**ADR-003 — AsyncStorage instead of Keychain for the token.**
+`react-native-keychain` is the right call in production (Keychain on iOS,
+EncryptedSharedPreferences on Android). AsyncStorage was chosen to minimize native dependencies
+and reduce the risk of the build breaking during development. The cost is stated plainly:
+**AsyncStorage is not encrypted**. The token sits as plain text in the app's sandbox; on a
+jailbroken or rooted device, or reading an unencrypted backup, it's readable. It sits behind a
+`Storage` interface (`src/services/storage/types.ts`) so that changing it means replacing one
+file, not rewriting the app.
 
-**ADR-004 — RTK Query en vez de TanStack Query.**
-Ambas son válidas. RTK Query gana acá porque el proyecto ya usa Redux Toolkit para estado de
-cliente, y una sola librería para cache de red y estado de cliente es menos superficie conceptual
-para explicar. TanStack Query sería la mejor opción si el estado global fuera mínimo o inexistente.
+**ADR-004 — RTK Query instead of TanStack Query.**
+Both are valid. RTK Query wins here because the project already uses Redux Toolkit for client
+state, and a single library for network cache and client state is less conceptual surface to
+explain. TanStack Query would be the better choice if global state were minimal or nonexistent.
 
-**ADR-005 — MSW como única fuente de verdad del contrato, con una intercepción que resultó
-distinta a la planeada.**
-_Revisado tras la implementación._ La idea original era que `msw/native` interceptara a nivel de
-red en desarrollo, igual que `msw/node` lo hace en los tests. Se probó, no se asumió: en React
-Native 0.87.1, el `FetchInterceptor` de `msw/native` devuelve el body vacío contra el `fetch`
-nativo, lo que produce un `SyntaxError: JSON Parse error: Unexpected end of input` en cada
-request. Es un problema de transporte, no algo que un polyfill adicional resuelva.
+**ADR-005 — MSW as the single source of truth for the contract, with an interception mechanism
+that turned out different from what was planned.**
+_Revised after implementation._ The original idea was for `msw/native` to intercept at the
+network level in development, the same way `msw/node` does in tests. This was tested, not
+assumed: on React Native 0.87.1, `msw/native`'s `FetchInterceptor` returns an empty body against
+the native `fetch`, which produces a `SyntaxError: JSON Parse error: Unexpected end of input` on
+every request. It's a transport problem, not something an additional polyfill fixes.
 
-Lo que quedó: en los **tests**, `msw/node` intercepta de verdad, a nivel de red, tal como se
-planeó. En **desarrollo**, el entrypoint (`index.js`) instala un shim de ~20 líneas sobre
-`globalThis.fetch` que enruta a los **mismos handlers** que usan los tests — mismo contrato, mismo
-`src/mocks/handlers/`, distinto mecanismo de enganche según el entorno.
+What was left standing: in **tests**, `msw/node` really does intercept at the network level, just
+as planned. In **development**, the entrypoint (`index.js`) installs a ~20-line shim over
+`globalThis.fetch` that routes to the **same handlers** the tests use — same contract, same
+`src/mocks/handlers/`, a different hook-in mechanism depending on the environment.
 
-La propiedad que sí se sostiene, y la que vale la pena reclamar, es esta: **cero código de
-mocking vive en `src/features/` o `src/services/`** — verificable con un grep — y borrar
-`src/mocks/` más las pocas líneas que lo arrancan en `index.js` no toca nada más. Esa
-independencia es a nivel de código fuente, no de bundle: sin ayuda extra, un build de producción
-arrastraría los ~50 productos de fixture y la dependencia de `msw` (se midió: 1.565.061 bytes con
-esos módulos incluidos). `metro.config.js` resuelve esos módulos a un stub vacío fuera de modo
-`dev`, y el bundle de producción bajó a ~897.000 bytes sin ellos.
+The property that does hold, and the one worth claiming, is this: **zero mocking code lives in
+`src/features/` or `src/services/`** — verifiable with a grep — and deleting `src/mocks/` plus
+the few lines that start it in `index.js` touches nothing else. That independence is at the
+source code level, not the bundle level: without extra help, a production build would drag in the
+~50 fixture products and the `msw` dependency (measured: 1,565,061 bytes with those modules
+included). `metro.config.js` resolves those modules to an empty stub outside `dev` mode, and the
+production bundle dropped to ~897,000 bytes without them.
 
-## Qué no está y por qué
+## What's not here and why
 
-Decisiones deliberadas de alcance, no descuidos:
+Deliberate scope decisions, not oversights:
 
-- **Sin backend real, base de datos o autenticación real.** El objetivo es demostrar el frontend;
-  un backend real sería una segunda superficie a mantener sin agregar nada a lo que se quiere
-  mostrar.
-- **Sin dark mode / theming dinámico, sin i18n, sin animaciones complejas, sin push
-  notifications.** Cada uno es una feature completa por sí sola y ninguna es lo que se está
-  demostrando acá.
-- **Sin Detox ni ningún E2E automatizado en el repo.** La verificación de comportamiento en vivo
-  (scroll infinito, búsqueda, pull-to-refresh, los contadores del Performance Lab) se hizo
-  manualmente contra un simulador con Maestro como herramienta de captura, no como suite que
-  corra en CI.
-- **Sin build nativo en CI.** CI corre lint, typecheck y tests sobre JS/TS; no compila la app para
-  iOS ni Android. Compilar en cada push agregaría minutos de CI y un runner macOS sin cambiar la
-  cobertura de lo que se quiere demostrar.
-- **Cobertura de tests parcial y deliberada.** Se testea lo que tiene lógica (reducers, selectors,
-  listeners de persistencia, hooks, integración de pantallas contra MSW); los componentes de
-  presentación pura no tienen test dedicado. El `coverageThreshold` de `jest.config.js` está
-  fijado apenas por debajo de lo que la suite mide hoy —98.19 / 96.87 / 90.82 / 98.12— así que
-  falla si se borra un test o se agrega código sin cubrir. Un umbral holgado no defiende nada.
-  El denominador también es una decisión: `collectCoverageFrom` cuenta `features/`, `services/` y
-  `utils/`, y deja fuera `src/app`, `src/navigation`, `src/components/ui`, `src/theme`,
-  `src/mocks` y `src/test`. Varios de esos se ejercitan igual desde los tests de pantalla; lo que
-  no hacen es contar en el porcentaje.
+- **No real backend, database, or real authentication.** The goal is to demonstrate the
+  frontend; a real backend would be a second surface to maintain without adding anything to
+  what's meant to be shown.
+- **No dark mode / dynamic theming, no i18n, no complex animations, no push notifications.**
+  Each one is a full feature on its own, and none of them is what's being demonstrated here.
+- **No Detox or any automated E2E in the repo.** Live behavior verification (infinite scroll,
+  search, pull-to-refresh, the Performance Lab counters) was done manually against a simulator,
+  with Maestro used as a capture tool, not as a suite that runs in CI.
+- **No native build in CI.** CI runs lint, typecheck, and tests over JS/TS; it doesn't build the
+  app for iOS or Android. Building on every push would add CI minutes and a macOS runner without
+  changing the coverage of what's meant to be demonstrated.
+- **Partial and deliberate test coverage.** What has logic gets tested (reducers, selectors,
+  persistence listeners, hooks, screen integration against MSW); pure presentation components
+  don't have a dedicated test. The `coverageThreshold` in `jest.config.js` is set just below what
+  the suite measures today — 98.19 / 96.87 / 90.82 / 98.12 — so it fails if a test is deleted or
+  code is added without coverage. A loose threshold doesn't defend anything. The denominator is
+  also a decision: `collectCoverageFrom` counts `features/`, `services/`, and `utils/`, and
+  leaves out `src/app`, `src/navigation`, `src/components/ui`, `src/theme`, `src/mocks`, and
+  `src/test`. Several of those are exercised anyway by the screen tests; what they don't do is
+  count toward the percentage.

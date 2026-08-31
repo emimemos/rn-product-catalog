@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-Guía de orientación para trabajar en este repo: comandos, estructura, reglas y trampas ya
-pisadas. Las decisiones de fondo (por qué esta librería y no otra) están en el README, sección
-ADRs; acá va lo operativo.
+Orientation guide for working in this repo: commands, structure, rules, and gotchas already
+stepped on. The substantive decisions (why this library and not another) are in the README,
+ADRs section; this one covers the operational side.
 
-## Comandos
+## Commands
 
 ```bash
 npm run lint        # eslint .
@@ -12,189 +12,194 @@ npm run typecheck   # tsc --noEmit
 npm test            # jest
 npm run ios         # react-native run-ios
 npm run android     # react-native run-android
-npm start           # react-native start (solo el bundler, sin instalar nada)
+npm start           # react-native start (just the bundler, doesn't install anything)
 ```
 
-Un test suelto, por archivo o por nombre:
+A single test, by file or by name:
 
 ```bash
 npx jest src/features/catalog/__tests__/ProductListScreen.test.tsx
-npx jest -t "muestra el estado de error"
+npx jest -t "shows the error state"
 ```
 
-Cobertura (usa el `coverageThreshold` de `jest.config.js`):
+Coverage (uses the `coverageThreshold` from `jest.config.js`):
 
 ```bash
 npm test -- --coverage
 ```
 
-## Mapa de arquitectura
+## Architecture map
 
-Árbol real (`find src -type d | sort`), una línea por carpeta:
+Real tree (`find src -type d | sort`), one line per folder:
 
 ```
-src/app                     configureStore, listenerMiddleware, hooks tipados y composición de App
-src/components/ui           primitivos de UI puros (Button, TextField, Screen, Skeleton, EmptyState,
-                             ErrorView) más FavoriteButton, que despacha a Redux — no es un primitivo puro
-src/features/auth           LoginScreen y las constantes de credenciales de demo
-src/features/catalog        catalogApi (infiniteQuery), catalogSlice (solo UI: query/categoría/orden),
-                             selectors, componentes de lista/filtro/orden, useDebouncedValue, las dos
-                             pantallas (lista y detalle)
-src/features/favorites      FavoritesScreen; el estado de favoritos vive en services/favorites
-src/features/profile        ProfileScreen (logout) y PerformanceLabScreen (demo de memoización)
-src/mocks                   "backend" en memoria: db.ts, handlers de MSW, arranque para RN y para Jest
+src/app                     configureStore, listenerMiddleware, typed hooks, and App composition
+src/components/ui           pure UI primitives (Button, TextField, Screen, Skeleton, EmptyState,
+                             ErrorView) plus FavoriteButton, which dispatches to Redux — not a pure primitive
+src/features/auth           LoginScreen and the demo credentials constants
+src/features/catalog        catalogApi (infiniteQuery), catalogSlice (UI only: query/category/sort),
+                             selectors, list/filter/sort components, useDebouncedValue, the two
+                             screens (list and detail)
+src/features/favorites      FavoritesScreen; favorites state lives in services/favorites
+src/features/profile        ProfileScreen (logout) and PerformanceLabScreen (memoization demo)
+src/mocks                   in-memory "backend": db.ts, MSW handlers, bootstrap for RN and for Jest
 src/navigation              RootNavigator (auth vs. app), AuthNavigator, AppTabs, CatalogStack,
-                             ProfileStack, y los ParamList tipados
-src/services/api            baseApi (fetchBaseQuery con manejo de 401), config, productsApi,
-                             sessionEvents (action neutral para invertir la dependencia hacia sesión)
-src/services/favorites      slice + listener de persistencia + selectors de favoritos por id
-src/services/session        slice + api (login) + listener de persistencia + hook useSession
-src/services/storage        interfaz Storage, implementación AsyncStorage y una en memoria para tests
-src/test                    polyfills de Jest, setup global de MSW/RN, renderWithProviders
-src/theme                   tokens de diseño (color, espaciado, tipografía, radios)
-src/utils                   formatPrice y utilidades sin estado
+                             ProfileStack, and the typed ParamLists
+src/services/api            baseApi (fetchBaseQuery with 401 handling), config, productsApi,
+                             sessionEvents (neutral action to invert the dependency toward session)
+src/services/favorites      slice + persistence listener + favorites-by-id selectors
+src/services/session        slice + api (login) + persistence listener + useSession hook
+src/services/storage        Storage interface, AsyncStorage implementation, and an in-memory one for tests
+src/test                    Jest polyfills, global MSW/RN setup, renderWithProviders
+src/theme                   design tokens (color, spacing, typography, radii)
+src/utils                   formatPrice and stateless utilities
 ```
 
-Cada carpeta de `features/` y `services/` tiene su `__tests__/` al lado del código que prueba.
+Every folder under `features/` and `services/` has its `__tests__/` next to the code it tests.
 
-## Regla de dependencias
+## Dependency rule
 
-Una feature no importa de otra feature. Lo que dos o más features necesitan compartir sube un
-nivel:
+A feature doesn't import from another feature. Whatever two or more features need to share moves
+up a level:
 
-- A `components/ui` si es presentación reusable.
-- A `services/` si es estado, lógica de red o persistencia. `session`, `favorites` y `productsApi`
-  viven ahí en vez de en `features/auth`, `features/favorites` y `features/catalog` porque más de
-  una pantalla los necesita (`ProductDetailScreen` y `FavoritesScreen` comparten `productsApi`;
-  `ProfileScreen` y `RootNavigator` comparten `session`).
-- A `utils/` si es una función pura sin estado.
+- To `components/ui` if it's reusable presentation.
+- To `services/` if it's state, network logic, or persistence. `session`, `favorites`, and
+  `productsApi` live there instead of in `features/auth`, `features/favorites`, and
+  `features/catalog` because more than one screen needs them (`ProductDetailScreen` and
+  `FavoritesScreen` share `productsApi`; `ProfileScreen` and `RootNavigator` share `session`).
+- To `utils/` if it's a pure, stateless function.
 
-`services/` tampoco importa de `features/`. Cuando `baseApi` necesita avisar que una sesión venció
-(401), no importa `sessionSlice`: despacha un action creator neutral
-(`src/services/api/sessionEvents.ts`) que `sessionSlice` escucha. La dependencia queda invertida.
+`services/` also doesn't import from `features/`. When `baseApi` needs to signal that a session
+has expired (401), it doesn't import `sessionSlice`: it dispatches a neutral action creator
+(`src/services/api/sessionEvents.ts`) that `sessionSlice` listens to. The dependency ends up
+inverted.
 
-Esto no es disciplina, es una regla de ESLint (`eslint.config.js`, bloque
-`import/no-restricted-paths`): cruzar de una feature a otra, o de `services/` a `features/`, es
-un error de lint, no una convención de code review. La regla resuelve cada import a un archivo
-en disco antes de compararlo con la zona, así que `@/features/otra/x`, `../otra/x` y
-`../../features/otra/x` fallan las tres por igual — importante, porque la convención de más
-abajo pide usar imports relativos dentro de la propia feature. Las features se leen del disco
-al cargar la config, así que una carpeta nueva bajo `src/features/` queda protegida sola.
+This isn't discipline, it's an ESLint rule (`eslint.config.js`, the `import/no-restricted-paths`
+block): crossing from one feature to another, or from `services/` to `features/`, is a lint
+error, not a code-review convention. The rule resolves every import to a file on disk before
+comparing it against the zone, so `@/features/other/x`, `../other/x`, and
+`../../features/other/x` all fail equally — important, because the convention further below asks
+for relative imports within your own feature. Features are read off disk when the config loads,
+so a new folder under `src/features/` gets protected on its own.
 
-Tres formas de romperla, las tres un error de lint: agregar
-`import {DEMO_EMAIL} from '@/features/auth/demoCredentials';` a
-`src/services/api/config.ts`; el mismo import en `src/features/catalog/selectors.ts`; y ese
-mismo import escrito como `'../auth/demoCredentials'`. `npx eslint <archivo>` las rechaza a las
-tres con el mensaje de la zona.
+Three ways to break it, all three a lint error: adding
+`import {DEMO_EMAIL} from '@/features/auth/demoCredentials';` to
+`src/services/api/config.ts`; the same import in `src/features/catalog/selectors.ts`; and that
+same import written as `'../auth/demoCredentials'`. `npx eslint <file>` rejects all three with the
+zone's message.
 
-Es lo que hace que la arquitectura escale a más pantallas sin que dependa de que alguien se
-acuerde de la regla.
+It's what lets the architecture scale to more screens without depending on someone remembering
+the rule.
 
-## Estado servidor vs. estado cliente
+## Server state vs. client state
 
-RTK Query (`baseApi`, `catalogApi`/`productsApi`, `sessionApi`) es dueño de todo lo que viene de
-la red: catálogo, detalle de producto, login. Tiene su propio cache, tags, deduplicación y
-estados de carga; no se duplica nada de esto en un slice.
+RTK Query (`baseApi`, `catalogApi`/`productsApi`, `sessionApi`) owns everything that comes from
+the network: catalog, product detail, login. It has its own cache, tags, deduplication, and
+loading states; none of this is duplicated in a slice.
 
-Los slices de Redux (`catalogSlice`, `favoritesSlice`, `sessionSlice`) guardan únicamente estado
-de cliente: `catalogSlice` guarda la búsqueda/categoría/orden elegidos, no los productos;
-`favoritesSlice` guarda una lista de ids, no los productos favoritos (esos se resuelven leyendo el
-cache de RTK Query — ver la nota de "Favoritos por id" en el README); `sessionSlice` guarda el
-token, el estado de autenticación y los datos de usuario que vinieron en la respuesta del login.
+The Redux slices (`catalogSlice`, `favoritesSlice`, `sessionSlice`) store only client state:
+`catalogSlice` stores the chosen search/category/sort order, not the products; `favoritesSlice`
+stores a list of ids, not the favorite products themselves (those get resolved by reading the RTK
+Query cache — see the "Favorites by id" note in the README); `sessionSlice` stores the token, the
+authentication state, and the user data that came back in the login response.
 
-No hay endpoint de revalidación de sesión: al arrancar, `restoreSession` confía en el token
-guardado y entra directo a la app. Si ya no sirve, la primera request autenticada devuelve 401 y
-el wrapper del `baseQuery` despacha `unauthorized`, que limpia sesión y favoritos. La validación
-es perezosa a propósito — no hay una request bloqueante en cada arranque — y el costo es que un
-token vencido se descubre en la primera pantalla con datos, no en el splash.
+There's no session revalidation endpoint: on startup, `restoreSession` trusts the stored token
+and drops straight into the app. If it no longer works, the first authenticated request returns
+a 401 and the `baseQuery` wrapper dispatches `unauthorized`, which clears session and favorites.
+Validation is lazy on purpose — there's no blocking request on every startup — and the cost is
+that a stale token gets discovered on the first screen with data, not on the splash screen.
 
-## Convenciones
+## Conventions
 
-- Named exports en todos lados, con dos excepciones: `App` (necesita default export para
-  `AppRegistry`) y el reducer de cada slice, que se exporta por default siguiendo la convención
-  de RTK — las acciones del mismo slice sí van nombradas.
-- Tests en `__tests__/` junto al código que prueban, no en un directorio `__tests__` global.
-- `testID` en kebab-case (`product-card-${id}`, `login-submit`, `lab-render-count-memo-0`).
-- Imports ordenados por `import/order`: builtins/externos, luego internos (`@/...`), luego
-  relativos, con línea en blanco entre grupos y alfabetizados dentro de cada uno. Lo aplica el
-  linter, no hace falta ordenarlos a mano si `eslint --fix` corre en pre-commit.
+- Named exports everywhere, with two exceptions: `App` (needs a default export for
+  `AppRegistry`) and each slice's reducer, which is exported as default following RTK convention
+  — that same slice's actions are named exports.
+- Tests in `__tests__/` next to the code they test, not in a global `__tests__` directory.
+- `testID` in kebab-case (`product-card-${id}`, `login-submit`, `lab-render-count-memo-0`).
+- Imports ordered by `import/order`: builtins/external, then internal (`@/...`), then relative,
+  with a blank line between groups and alphabetized within each one. The linter enforces it, no
+  need to order them by hand if `eslint --fix` runs on pre-commit.
 
-## Estrategia de testing
+## Testing strategy
 
-Pocos tests, elegidos por comportamiento: lo que tiene lógica se testea (reducers, selectors,
-hooks, integración de pantalla contra MSW); lo que es presentación pura no. No hay snapshots de
-UI grandes — son frágiles y no defienden nada que un test de comportamiento no defienda mejor.
+Few tests, chosen by behavior: what has logic gets tested (reducers, selectors, hooks, screen
+integration against MSW); pure presentation doesn't. There are no large UI snapshots — they're
+brittle and don't defend anything a behavior test doesn't defend better.
 
-`src/test/renderWithProviders.tsx` envuelve en un store de Redux fresco y en `NavigationContainer`
-para no repetir ese setup en cada archivo. MSW corre con `onUnhandledRequest: 'error'` en los
-tests (`src/test/setup.ts`): una request no mockeada hace fallar el test en vez de colgarlo o
-devolver datos silenciosamente equivocados.
+`src/test/renderWithProviders.tsx` wraps things in a fresh Redux store and a
+`NavigationContainer` so that setup doesn't get repeated in every file. MSW runs with
+`onUnhandledRequest: 'error'` in tests (`src/test/setup.ts`): an unmocked request fails the test
+instead of hanging it or silently returning the wrong data.
 
 ## Gotchas
 
-- **El alias `@/` hace falta en tres archivos, no en uno.** `tsconfig.json` (`paths`),
-  `babel.config.js` (`babel-plugin-module-resolver`) y `jest.config.js` (`moduleNameMapper`)
-  resuelven el alias en tres herramientas distintas (TypeScript, Metro/Babel, Jest) que no se leen
-  la configuración entre sí. Agregar un alias nuevo sin tocar los tres rompe una de las tres
-  cadenas de forma silenciosa según qué comando se corra.
+- **The `@/` alias needs to exist in three files, not one.** `tsconfig.json` (`paths`),
+  `babel.config.js` (`babel-plugin-module-resolver`), and `jest.config.js`
+  (`moduleNameMapper`) resolve the alias in three different tools (TypeScript, Metro/Babel,
+  Jest) that don't read each other's config. Adding a new alias without touching all three
+  silently breaks one of the three chains depending on which command runs.
 
-- **MSW en React Native necesitó cuatro arreglos de toolchain, y al final no intercepta a nivel
-  nativo.** `msw/native` fue probado, no descartado por sospecha: en RN 0.87.1 su
-  `FetchInterceptor` devuelve el body vacío contra `fetch` nativo (`SyntaxError: JSON Parse error:
-Unexpected end of input`), un problema de transporte que ningún polyfill adicional resuelve. En
-  el camino hicieron falta cuatro piezas de toolchain que sí eran necesarias de todas formas:
-  `@babel/plugin-transform-class-static-block` (Metro no bundlea sin él), `web-streams-polyfill`,
-  un stub de `BroadcastChannel`, y registrar `AppRegistry.registerComponent` de forma síncrona en
-  `index.js` en vez de esperar una promesa (si no, la app no arranca en frío, con o sin MSW). El
-  resultado: en tests, `msw/node` intercepta de verdad; en dev, el entrypoint instala un shim de
-  ~20 líneas sobre `globalThis.fetch` que enruta a los mismos handlers. Ver ADR-005 en el README
-  para la propiedad que sí se sostiene con esto.
+- **MSW on React Native needed four toolchain fixes, and in the end doesn't intercept at the
+  native level.** `msw/native` was tested, not ruled out on suspicion: on RN 0.87.1 its
+  `FetchInterceptor` returns an empty body against native `fetch` (`SyntaxError: JSON Parse
+error: Unexpected end of input`), a transport problem that no additional polyfill fixes. Along
+  the way, four pieces of toolchain turned out to be necessary anyway:
+  `@babel/plugin-transform-class-static-block` (Metro doesn't bundle without it),
+  `web-streams-polyfill`, a `BroadcastChannel` stub, and registering
+  `AppRegistry.registerComponent` synchronously in `index.js` instead of waiting on a promise
+  (otherwise the app doesn't cold-start, with or without MSW). The result: in tests, `msw/node`
+  really does intercept; in dev, the entrypoint installs a ~20-line shim over `globalThis.fetch`
+  that routes to the same handlers. See ADR-005 in the README for the property that does hold up
+  with this.
 
-- **`jest.config.js` mapea `msw/node`, `immer` y `react-redux` a sus builds CJS a mano, en vez de
-  usar `customExportConditions: ['react-native']`.** Esa condición global sí resuelve estos tres
-  paquetes, pero también cambia qué build resuelven React Navigation, `react-native-screens`,
-  `react-native-safe-area-context` y `use-sync-external-store` — paquetes que a propósito quieren
-  la condición `react-native` de sus `exports`. Un mapper puntual falla ruidosamente
-  ("module not found") si la ruta que apunta deja de existir; un cambio de condición global puede
-  resolver silenciosamente el paquete equivocado. Los tres mappers documentan además, cada uno,
-  qué paquete se está sorteando y por qué (ver los comentarios en el archivo).
+- **`jest.config.js` maps `msw/node`, `immer`, and `react-redux` to their CJS builds by hand,
+  instead of using `customExportConditions: ['react-native']`.** That global condition does
+  resolve these three packages, but it also changes which build gets resolved for React
+  Navigation, `react-native-screens`, `react-native-safe-area-context`, and
+  `use-sync-external-store` — packages that deliberately want the `react-native` condition from
+  their `exports`. A targeted mapper fails loudly ("module not found") if the path it points to
+  stops existing; a global condition change can silently resolve the wrong package. The three
+  mappers also each document which package is being routed around and why (see the comments in
+  the file).
 
-- **RTK Query agenda un `requestAnimationFrame` para su auto-batching, y el preset de Jest de RN
-  lo implementa como un `setTimeout(0)` real.** Eso puede dispararse después de que un test ya
-  terminó y su store fue descartado, produciendo actualizaciones fuera de `act()` de forma
-  intermitente. `src/test/setup.ts` reemplaza ese timer por un `queueMicrotask`, solo en el
-  entorno de test — la configuración de producción no se toca para acomodar esto.
+- **RTK Query schedules a `requestAnimationFrame` for its auto-batching, and RN's Jest preset
+  implements it as a real `setTimeout(0)`.** That can fire after a test has already finished and
+  its store was discarded, producing updates outside `act()` intermittently.
+  `src/test/setup.ts` replaces that timer with a `queueMicrotask`, only in the test environment
+  — the production config isn't touched to accommodate this.
 
-- **`noUncheckedIndexedAccess` obliga a chequear cualquier acceso por índice** (`array[i]`,
-  `record[key]`) antes de usarlo, porque TypeScript lo tipa como `T | undefined` en vez de `T`. No
-  hay `!` de aserción no nula en `src/` para esquivarlo: donde el acceso puede fallar, se maneja
-  con un `if`, un valor por defecto o un narrowing explícito.
+- **`noUncheckedIndexedAccess` forces checking any indexed access** (`array[i]`, `record[key]`)
+  before using it, because TypeScript types it as `T | undefined` instead of `T`. There's no
+  non-null assertion `!` in `src/` to dodge it: wherever the access can fail, it's handled with
+  an `if`, a default value, or explicit narrowing.
 
-- **New Architecture (Fabric + TurboModules) está activa por defecto**, no es una bandera que se
-  prendió a mano. La evidencia explícita está en `android/gradle.properties` (`newArchEnabled=true`);
-  en iOS no hay ninguna línea del `Podfile` que la mencione, porque RN 0.87.1 la activa dentro de
-  `react_native_pods.rb`. El renderer es C++ y no hay bridge asíncrono de por medio.
+- **New Architecture (Fabric + TurboModules) is active by default**, it's not a flag that was
+  turned on by hand. The explicit evidence is in `android/gradle.properties`
+  (`newArchEnabled=true`); on iOS there's no line in the `Podfile` that mentions it, because RN
+  0.87.1 turns it on inside `react_native_pods.rb`. The renderer is C++ and there's no async
+  bridge in between.
 
-- **El bundle de producción no debe poder importar `src/mocks/`.** `metro.config.js` resuelve
-  `./msw.polyfills` y `./src/mocks/server.native` a un módulo vacío cuando `context.dev` es falso,
-  así que aunque algo llegara a importar esas rutas en un build de release, no arrastra MSW ni los
-  ~50 productos de fixture al bundle. Medido: 1.565.061 bytes con esos módulos incluidos a mano
-  contra ~897.000 bytes con el stub activo. Las credenciales de demo (`src/features/auth/demoCredentials.ts`)
-  son una copia propia de la feature, no un import de `src/mocks/db.ts`, con un test que las
-  compara para que no diverjan: así el día que se borre `src/mocks/` la app sigue compilando.
+- **The production bundle must not be able to import `src/mocks/`.** `metro.config.js` resolves
+  `./msw.polyfills` and `./src/mocks/server.native` to an empty module when `context.dev` is
+  false, so even if something did end up importing those paths in a release build, it doesn't
+  drag MSW or the ~50 fixture products into the bundle. Measured: 1,565,061 bytes with those
+  modules included by hand versus ~897,000 bytes with the stub active. The demo credentials
+  (`src/features/auth/demoCredentials.ts`) are the feature's own copy, not an import from
+  `src/mocks/db.ts`, with a test that compares them so they don't diverge: that way, the day
+  `src/mocks/` gets deleted, the app still compiles.
 
-- **`overrides.picomatch` en `package.json` existe para que el lockfile sea portable.** Sin él,
-  `npm ci` falla en Linux con `EUSAGE` aunque funcione en macOS. La causa: `fdir` declara
-  `picomatch ^3 || ^4` como _peer_, mientras Jest necesita `^2`, y npm resuelve ese conflicto con
-  un hoisting distinto según qué binarios opcionales de plataforma instale (`unrs-resolver` trae
-  uno por sistema operativo). El árbol resultante deja de coincidir con el lock generado en otra
-  plataforma. Fijar una única `picomatch@^4.0.7` elimina la ambigüedad: un solo paquete en la raíz,
-  el mismo árbol en cualquier sistema. Jest funciona con la v4 — la suite completa lo confirma.
-  Si algún día Jest sube su rango, el override se puede quitar y volver a verificar con
-  `npm ci` en Linux.
+- **`overrides.picomatch` in `package.json` exists so the lockfile is portable.** Without it,
+  `npm ci` fails on Linux with `EUSAGE` even though it works on macOS. The cause: `fdir` declares
+  `picomatch ^3 || ^4` as a _peer_, while Jest needs `^2`, and npm resolves that conflict with
+  different hoisting depending on which platform-optional binaries it installs
+  (`unrs-resolver` ships one per operating system). The resulting tree stops matching the lock
+  generated on another platform. Pinning a single `picomatch@^4.0.7` removes the ambiguity: one
+  package at the root, the same tree on any system. Jest works fine with v4 — the full suite
+  confirms it. If Jest ever raises its range, the override can be removed and re-verified with
+  `npm ci` on Linux.
 
-## Decisiones
+## Decisions
 
-Los tradeoffs de fondo — por qué bare RN y no Expo, por qué AsyncStorage y no Keychain, qué pasó
-realmente con MSW en RN, qué versiones quedaron pineadas y por qué — están en el README, sección
-**ADRs**.
+The substantive tradeoffs — why bare RN and not Expo, why AsyncStorage and not Keychain, what
+actually happened with MSW on RN, which versions ended up pinned and why — are in the README,
+**ADRs** section.
