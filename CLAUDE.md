@@ -183,6 +183,16 @@ Unexpected end of input`), un problema de transporte que ningún polyfill adicio
   son una copia propia de la feature, no un import de `src/mocks/db.ts`, con un test que las
   compara para que no diverjan: así el día que se borre `src/mocks/` la app sigue compilando.
 
+- **`overrides.picomatch` en `package.json` existe para que el lockfile sea portable.** Sin él,
+  `npm ci` falla en Linux con `EUSAGE` aunque funcione en macOS. La causa: `fdir` declara
+  `picomatch ^3 || ^4` como _peer_, mientras Jest necesita `^2`, y npm resuelve ese conflicto con
+  un hoisting distinto según qué binarios opcionales de plataforma instale (`unrs-resolver` trae
+  uno por sistema operativo). El árbol resultante deja de coincidir con el lock generado en otra
+  plataforma. Fijar una única `picomatch@^4.0.7` elimina la ambigüedad: un solo paquete en la raíz,
+  el mismo árbol en cualquier sistema. Jest funciona con la v4 — la suite completa lo confirma.
+  Si algún día Jest sube su rango, el override se puede quitar y volver a verificar con
+  `npm ci` en Linux.
+
 ## Decisiones
 
 Los tradeoffs de fondo — por qué bare RN y no Expo, por qué AsyncStorage y no Keychain, qué pasó
