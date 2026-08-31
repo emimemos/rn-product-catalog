@@ -1,59 +1,59 @@
-# rn-product-catalog — Plan de Implementación
+# rn-product-catalog — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Construir una app React Native de catálogo de productos con auth, búsqueda, paginado infinito y favoritos, donde cada decisión técnica sea defendible en una entrevista.
+**Goal:** Build a React Native product-catalog app with auth, search, infinite pagination, and favorites, where every technical decision is defensible in an interview.
 
-**Architecture:** Organización feature-based sobre RN CLI bare. RTK Query es dueño del estado del servidor y los slices del estado del cliente. MSW intercepta a nivel de red, así que la app hace HTTP real tanto en dev como en tests y no contiene ninguna rama de mocking. Cada feature inyecta sus endpoints en un `baseApi` único.
+**Architecture:** Feature-based organization on top of bare RN CLI. RTK Query owns server state and the slices own client state. MSW intercepts at the network level, so the app makes real HTTP calls both in dev and in tests and contains no mocking branch. Each feature injects its endpoints into a single `baseApi`.
 
 **Tech Stack:** React Native 0.87.1 (bare, New Architecture), React 19.2.3, TypeScript 5.x strict, Redux Toolkit 2.12 + RTK Query, React Navigation 7, MSW 2.15, Jest 30 + @testing-library/react-native 14, ESLint 10 + Prettier, GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-08-30-rn-product-catalog-design.md`
 
-> **Este documento es el plan tal como se escribió antes de implementar, y se conserva
-> como registro.** La implementación lo corrigió en varios puntos: el orden de
-> `addCase`/`addMatcher` en RTK, el arranque de `index.js`, el mock de
-> `react-native-safe-area-context`, la afirmación sobre memoización en `FlatList`
-> (refutada al medirla) y la acción `filtersReset`, que se eliminó por no tener
-> ningún control que la dispare. El código y el README son la fuente de verdad
-> sobre el estado actual; el ADR correspondiente explica cada cambio.
+> **This document is the plan as it was written before implementation, and is kept
+> as a record.** The implementation corrected it on several points: the order of
+> `addCase`/`addMatcher` in RTK, the `index.js` startup, the mock of
+> `react-native-safe-area-context`, the claim about memoization in `FlatList`
+> (refuted upon measuring it), and the `filtersReset` action, which was removed
+> for having no control that triggers it. The code and the README are the source
+> of truth about the current state; the corresponding ADR explains each change.
 
 ## Global Constraints
 
-- React Native **0.87.1** (CLI bare, no Expo). Fallback documentado: **0.86.3** si el build nativo falla. La decisión se toma en la Task 1, no después.
-- TypeScript **5.x** (el del template). **No TypeScript 7.x** — ver ADR-002.
-- `strict: true` más `noUncheckedIndexedAccess` y `noImplicitOverride`.
-- **Cero `any` en `src/`.** Si hace falta, es `unknown` con narrowing.
-- Path alias `@/*` → `src/*`, configurado en `tsconfig.json`, `babel.config.js` y `jest.config.js`.
-- **Regla de dependencias:** una feature puede importar de `components/ui`, `services`, `theme`, `utils` y `navigation/types`. Una feature **nunca** importa de otra feature. Se enforcea con ESLint (`no-restricted-imports` sobre `@/features/**` dentro de `src/features/**`); dentro de la propia feature se usan imports relativos.
-- `favorites` referencia productos solo por `id` y resuelve los datos desde el cache de RTK Query.
-- Los mismos handlers de MSW alimentan la app en dev y los tests — una sola fuente de verdad del contrato de API.
-- Sin snapshots de UI grandes. Sin build nativo en CI.
-- Cada task cierra con `npm run lint && npm run typecheck && npm test` en verde y un commit. **Nada se da por hecho sin correr el comando.**
-- Mensajes de commit en formato Conventional Commits.
+- React Native **0.87.1** (bare CLI, no Expo). Documented fallback: **0.86.3** if the native build fails. The decision is made in Task 1, not afterward.
+- TypeScript **5.x** (the one from the template). **Not TypeScript 7.x** — see ADR-002.
+- `strict: true` plus `noUncheckedIndexedAccess` and `noImplicitOverride`.
+- **Zero `any` in `src/`.** Where needed, it's `unknown` with narrowing.
+- Path alias `@/*` → `src/*`, configured in `tsconfig.json`, `babel.config.js`, and `jest.config.js`.
+- **Dependency rule:** a feature can import from `components/ui`, `services`, `theme`, `utils`, and `navigation/types`. A feature **never** imports from another feature. Enforced with ESLint (`no-restricted-imports` over `@/features/**` inside `src/features/**`); within a feature itself, relative imports are used.
+- `favorites` references products only by `id` and resolves the data from the RTK Query cache.
+- The same MSW handlers feed the app in dev and the tests — a single source of truth for the API contract.
+- No large UI snapshots. No native build in CI.
+- Each task closes with `npm run lint && npm run typecheck && npm test` green and a commit. **Nothing is assumed without running the command.**
+- Commit messages in Conventional Commits format.
 
-### Adiciones deliberadas al árbol del spec
+### Deliberate additions to the spec's tree
 
-El spec §3.1 no las lista; se agregan con justificación y se documentan en `CLAUDE.md`:
+Spec §3.1 doesn't list these; they're added with justification and documented in `CLAUDE.md`:
 
-| Archivo                             | Por qué                                                                                                                                              |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/services/api/types.ts`         | El contrato de la API lo consumen features **y** mocks. Vive en la capa de API para que ninguna feature dependa de otra ni los mocks de una feature. |
-| `src/services/api/config.ts`        | `API_BASE_URL` compartida entre `baseApi` y los handlers de MSW.                                                                                     |
-| `src/services/api/sessionEvents.ts` | `unauthorized` action creator neutral, para que `services` no importe de `features` al manejar el 401.                                               |
-| `src/app/listenerMiddleware.ts`     | `createListenerMiddleware` tipado; la persistencia se hace por listener en vez de dentro de los reducers (los reducers quedan puros).                |
-| `src/services/api/productsApi.ts`   | `getProduct` lo consumen el detalle (feature `catalog`) y favoritos (feature `favorites`). En la capa compartida, ninguna feature depende de otra.   |
-| `src/services/session/`             | El estado de sesión lo consumen `navigation`, `profile` y la capa de API. La feature `auth` conserva solo la pantalla de login.                      |
-| `src/services/favorites/`           | Los favoritos los consumen la pantalla de favoritos y el detalle de producto. Mismo criterio.                                                        |
-| `src/utils/formatPrice.ts`          | Formateo de precio compartido por catálogo, detalle y favoritos.                                                                                     |
+| File                                | Why                                                                                                                                                      |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/services/api/types.ts`         | The API contract is consumed by features **and** mocks. It lives in the API layer so no feature depends on another, nor on another feature's mocks.      |
+| `src/services/api/config.ts`        | `API_BASE_URL` shared between `baseApi` and the MSW handlers.                                                                                            |
+| `src/services/api/sessionEvents.ts` | A neutral `unauthorized` action creator, so `services` doesn't import from `features` when handling the 401.                                             |
+| `src/app/listenerMiddleware.ts`     | Typed `createListenerMiddleware`; persistence is done per listener instead of inside the reducers (the reducers stay pure).                              |
+| `src/services/api/productsApi.ts`   | `getProduct` is consumed by details (the `catalog` feature) and favorites (the `favorites` feature). In the shared layer, no feature depends on another. |
+| `src/services/session/`             | Session state is consumed by `navigation`, `profile`, and the API layer. The `auth` feature keeps only the login screen.                                 |
+| `src/services/favorites/`           | Favorites are consumed by the favorites screen and the product detail screen. Same criterion.                                                            |
+| `src/utils/formatPrice.ts`          | Price formatting shared by catalog, detail, and favorites.                                                                                               |
 
 ---
 
-## Task 1: Scaffolding y toolchain en verde
+## Task 1: Scaffolding and toolchain green
 
 **Files:**
 
-- Create: todo el template de RN 0.87.1 en la raíz del repo (`android/`, `ios/`, `index.js`, `app.json`, `package.json`, `Gemfile`)
+- Create: the entire RN 0.87.1 template at the repo root (`android/`, `ios/`, `index.js`, `app.json`, `package.json`, `Gemfile`)
 - Create: `tsconfig.json`, `babel.config.js`, `jest.config.js`, `eslint.config.js`, `.prettierrc.js`, `.gitignore`
 - Create: `.husky/pre-commit`, `.lintstagedrc.json`
 - Create: `.github/workflows/ci.yml`
@@ -62,12 +62,12 @@ El spec §3.1 no las lista; se agregan con justificación y se documentan en `CL
 
 **Interfaces:**
 
-- Consumes: nada.
-- Produces: `formatPrice(cents: number): string`. Scripts npm `lint`, `typecheck`, `test`, `ios`, `android`, `start`. Alias `@/*` resoluble desde TS, Babel y Jest.
+- Consumes: nothing.
+- Produces: `formatPrice(cents: number): string`. npm scripts `lint`, `typecheck`, `test`, `ios`, `android`, `start`. Alias `@/*` resolvable from TS, Babel, and Jest.
 
-- [ ] **Step 1: Generar el template fuera del repo**
+- [ ] **Step 1: Generate the template outside the repo**
 
-El CLI de RN exige un directorio vacío, y este repo ya tiene `docs/` y `.git`. Se genera al lado y se copia.
+The RN CLI requires an empty directory, and this repo already has `docs/` and `.git`. It gets generated alongside and then copied over.
 
 ```bash
 cd /Users/emilianomartino/Documents
@@ -77,7 +77,7 @@ npx @react-native-community/cli@latest init RnProductCatalog \
   --install-pods false
 ```
 
-- [ ] **Step 2: Copiar el template al repo sin pisar git ni docs**
+- [ ] **Step 2: Copy the template into the repo without stepping on git or docs**
 
 ```bash
 cd /Users/emilianomartino/Documents
@@ -87,11 +87,11 @@ cd rn-product-catalog
 npm install
 ```
 
-Verificar que `git status` no muestre `docs/` borrado ni `.git` tocado.
+Verify that `git status` doesn't show `docs/` deleted or `.git` touched.
 
-- [ ] **Step 3: Añadir `.idea/` al `.gitignore`**
+- [ ] **Step 3: Add `.idea/` to `.gitignore`**
 
-El repo ya tiene `.idea/` sin trackear. Agregar al final de `.gitignore`:
+The repo already has an untracked `.idea/`. Add to the end of `.gitignore`:
 
 ```
 # IDE
@@ -99,26 +99,26 @@ El repo ya tiene `.idea/` sin trackear. Agregar al final de `.gitignore`:
 *.iml
 ```
 
-- [ ] **Step 4: Verificar el build nativo de iOS — punto de decisión de versión**
+- [ ] **Step 4: Verify the iOS native build — version decision point**
 
 ```bash
 cd ios && pod install && cd ..
 npm run ios
 ```
 
-Expected: la app arranca en el simulador y muestra la pantalla de bienvenida de RN.
+Expected: the app launches on the simulator and shows the RN welcome screen.
 
-**Si falla** (CocoaPods contra Xcode 26.6, o Gradle contra JDK 17): regenerar el template con `--version 0.86.3` repitiendo los Steps 1–2 y anotar el cambio en el ADR-001 del README. No se avanza a la Task 2 con el build roto. Ningún código de aplicación de este plan cambia entre 0.87.1 y 0.86.3.
+**If it fails** (CocoaPods against Xcode 26.6, or Gradle against JDK 17): regenerate the template with `--version 0.86.3`, repeating Steps 1–2, and note the change in ADR-001 in the README. Do not move on to Task 2 with a broken build. No application code in this plan changes between 0.87.1 and 0.86.3.
 
-- [ ] **Step 5: Verificar el build nativo de Android**
+- [ ] **Step 5: Verify the Android native build**
 
 ```bash
 npm run android
 ```
 
-Expected: la app arranca en el emulador. Mismo criterio de fallback que el Step 4.
+Expected: the app launches on the emulator. Same fallback criterion as Step 4.
 
-- [ ] **Step 6: Instalar las dependencias del toolchain**
+- [ ] **Step 6: Install the toolchain dependencies**
 
 ```bash
 npm install --save-dev \
@@ -131,7 +131,7 @@ npm install --save-dev \
   lint-staged
 ```
 
-- [ ] **Step 7: Configurar TypeScript**
+- [ ] **Step 7: Configure TypeScript**
 
 `tsconfig.json`:
 
@@ -154,7 +154,7 @@ npm install --save-dev \
 }
 ```
 
-- [ ] **Step 8: Configurar el alias en Babel**
+- [ ] **Step 8: Configure the alias in Babel**
 
 `babel.config.js`:
 
@@ -174,35 +174,35 @@ module.exports = {
 };
 ```
 
-> El alias hace falta **dos veces**: `tsconfig.json` lo resuelve para el type checker y el editor; `babel.config.js` lo reescribe en tiempo de build para que Metro lo encuentre. Uno no reemplaza al otro. (Pregunta esperable en entrevista.)
+> The alias is needed **twice**: `tsconfig.json` resolves it for the type checker and the editor; `babel.config.js` rewrites it at build time so Metro can find it. One doesn't replace the other. (An expected interview question.)
 
-- [ ] **Step 9: Configurar ESLint — verificar primero el formato del config de RN**
+- [ ] **Step 9: Configure ESLint — verify the RN config's format first**
 
-ESLint 10 solo acepta flat config. Antes de escribir el archivo, inspeccionar qué exporta el paquete:
+ESLint 10 only accepts flat config. Before writing the file, inspect what the package exports:
 
 ```bash
 cat node_modules/@react-native/eslint-config/package.json | grep -A5 '"exports"'
 node -e "const c=require('@react-native/eslint-config'); console.log(Array.isArray(c) ? 'FLAT' : 'ESLINTRC')"
 ```
 
-**Rama A — imprime `FLAT`:** usar el config directamente (ver Step 10).
+**Branch A — prints `FLAT`:** use the config directly (see Step 10).
 
-**Rama B — imprime `ESLINTRC`:** instalar el puente y envolverlo:
+**Branch B — prints `ESLINTRC`:** install the bridge and wrap it:
 
 ```bash
 npm install --save-dev @eslint/eslintrc @eslint/js
 ```
 
-y reemplazar en el Step 10 la línea `...reactNativeConfig,` por:
+and in Step 10 replace the line `...reactNativeConfig,` with:
 
 ```js
 const {FlatCompat} = require('@eslint/eslintrc');
 const compat = new FlatCompat({baseDirectory: __dirname});
-// ...dentro del array exportado:
+// ...inside the exported array:
 ...compat.extends('@react-native'),
 ```
 
-- [ ] **Step 10: Escribir `eslint.config.js`**
+- [ ] **Step 10: Write `eslint.config.js`**
 
 ```js
 const reactNativeConfig = require('@react-native/eslint-config');
@@ -247,7 +247,7 @@ module.exports = [
     },
   },
   {
-    // Regla de dependencias del spec §3.1, enforceada por el linter.
+    // Dependency rule from spec §3.1, enforced by the linter.
     files: ['src/features/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
@@ -257,7 +257,7 @@ module.exports = [
             {
               group: ['@/features/*'],
               message:
-                'Una feature no importa de otra feature. Subí lo compartido a components/ui, services o utils. Dentro de la propia feature usá imports relativos.',
+                "A feature doesn't import from another feature. Move shared code up to components/ui, services, or utils. Within a feature itself, use relative imports.",
             },
           ],
         },
@@ -268,7 +268,7 @@ module.exports = [
 ];
 ```
 
-- [ ] **Step 11: Escribir `.prettierrc.js`**
+- [ ] **Step 11: Write `.prettierrc.js`**
 
 ```js
 module.exports = {
@@ -280,7 +280,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 12: Configurar Jest**
+- [ ] **Step 12: Configure Jest**
 
 `jest.config.js`:
 
@@ -306,13 +306,13 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 13: Crear los archivos de setup de tests (vacíos por ahora)**
+- [ ] **Step 13: Create the test setup files (empty for now)**
 
 `src/test/polyfills.ts`:
 
 ```ts
-// MSW 2 necesita las Web APIs de streams y encoding, que el entorno `node` de
-// Jest no expone por defecto bajo el preset de React Native.
+// MSW 2 needs the streams and encoding Web APIs, which Jest's `node`
+// environment doesn't expose by default under the React Native preset.
 import {ReadableStream, TransformStream} from 'node:stream/web';
 import {TextDecoder, TextEncoder} from 'node:util';
 import {BroadcastChannel} from 'node:worker_threads';
@@ -331,13 +331,13 @@ export {};
 `src/test/setup.ts`:
 
 ```ts
-// El servidor de MSW y los mocks de librerías nativas se agregan en la Task 4.
+// The MSW server and the native library mocks are added in Task 4.
 export {};
 ```
 
-- [ ] **Step 14: Añadir los scripts a `package.json`**
+- [ ] **Step 14: Add the scripts to `package.json`**
 
-En la clave `scripts`, dejar:
+In the `scripts` key, leave:
 
 ```json
 {
@@ -351,7 +351,7 @@ En la clave `scripts`, dejar:
 }
 ```
 
-- [ ] **Step 15: Escribir el test que falla de `formatPrice`**
+- [ ] **Step 15: Write the failing `formatPrice` test**
 
 `src/utils/__tests__/formatPrice.test.ts`:
 
@@ -359,41 +359,41 @@ En la clave `scripts`, dejar:
 import {formatPrice} from '../formatPrice';
 
 describe('formatPrice', () => {
-  it('formatea centavos como dólares con dos decimales', () => {
+  it('formats cents as dollars with two decimals', () => {
     expect(formatPrice(1999)).toBe('$19.99');
   });
 
-  it('rellena los centavos con cero a la izquierda', () => {
+  it('pads the cents with a leading zero', () => {
     expect(formatPrice(1905)).toBe('$19.05');
   });
 
-  it('formatea un precio exacto sin centavos', () => {
+  it('formats an exact price with no cents', () => {
     expect(formatPrice(2000)).toBe('$20.00');
   });
 
-  it('formatea cero', () => {
+  it('formats zero', () => {
     expect(formatPrice(0)).toBe('$0.00');
   });
 
-  it('agrega separador de miles', () => {
+  it('adds a thousands separator', () => {
     expect(formatPrice(123456)).toBe('$1,234.56');
   });
 });
 ```
 
-- [ ] **Step 16: Correr el test y verificar que falla**
+- [ ] **Step 16: Run the test and verify it fails**
 
 Run: `npx jest src/utils --no-coverage`
 Expected: FAIL — `Cannot find module '../formatPrice'`.
 
-- [ ] **Step 17: Implementar `formatPrice`**
+- [ ] **Step 17: Implement `formatPrice`**
 
 `src/utils/formatPrice.ts`:
 
 ```ts
 /**
- * Los precios viajan en centavos (enteros) por la API para no arrastrar errores
- * de punto flotante. El formateo a string es responsabilidad de la UI.
+ * Prices travel over the API in cents (integers) so as not to drag along
+ * floating-point errors. Formatting to a string is the UI's responsibility.
  */
 export function formatPrice(cents: number): string {
   const dollars = Math.trunc(cents / 100);
@@ -403,12 +403,12 @@ export function formatPrice(cents: number): string {
 }
 ```
 
-- [ ] **Step 18: Correr el test y verificar que pasa**
+- [ ] **Step 18: Run the test and verify it passes**
 
 Run: `npx jest src/utils --no-coverage`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 19: Configurar husky y lint-staged**
+- [ ] **Step 19: Configure husky and lint-staged**
 
 ```bash
 npx husky init
@@ -429,7 +429,7 @@ npx lint-staged
 }
 ```
 
-- [ ] **Step 20: Escribir el workflow de CI**
+- [ ] **Step 20: Write the CI workflow**
 
 `.github/workflows/ci.yml`:
 
@@ -443,7 +443,7 @@ on:
 
 jobs:
   quality:
-    name: Lint, typecheck y tests
+    name: Lint, typecheck, and tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -457,9 +457,9 @@ jobs:
       - run: npm test -- --coverage --ci
 ```
 
-> Sin build nativo: es lento, frágil y no aporta a lo que este proyecto demuestra. La decisión se documenta en el README (Task 16), no se omite en silencio.
+> No native build: it's slow, brittle, and doesn't add to what this project demonstrates. The decision is documented in the README (Task 16), not silently omitted.
 
-- [ ] **Step 21: Correr la verificación completa**
+- [ ] **Step 21: Run the full verification**
 
 Run:
 
@@ -467,18 +467,18 @@ Run:
 npm run lint && npm run typecheck && npm test
 ```
 
-Expected: los tres en verde. `npm test` corre 5 tests. La cobertura todavía no se exige (no hay archivos en `features/` ni `services/`); si `coverageThreshold` rompe, correr `npm test` sin `--coverage` hasta la Task 3 y anotarlo.
+Expected: all three green. `npm test` runs 5 tests. Coverage isn't enforced yet (there are no files in `features/` or `services/`); if `coverageThreshold` breaks, run `npm test` without `--coverage` until Task 3, and note it.
 
 - [ ] **Step 22: Commit**
 
 ```bash
 git add -A
-git commit -m "chore: scaffolding RN 0.87.1 con TS strict, alias, ESLint, Jest y CI"
+git commit -m "chore: scaffold RN 0.87.1 with strict TS, alias, ESLint, Jest, and CI"
 ```
 
 ---
 
-## Task 2: Contrato de API y servicio de storage
+## Task 2: API contract and storage service
 
 **Files:**
 
@@ -493,23 +493,23 @@ git commit -m "chore: scaffolding RN 0.87.1 con TS strict, alias, ESLint, Jest y
 
 **Interfaces:**
 
-- Consumes: nada.
+- Consumes: nothing.
 - Produces:
 
-  - `CATEGORIES`, `Category`, `SortOption`, `Product`, `ProductsPage`, `ProductsQueryArgs`, `User`, `LoginRequest`, `LoginResponse` desde `@/services/api/types`.
-  - `API_BASE_URL: string` desde `@/services/api/config`.
+  - `CATEGORIES`, `Category`, `SortOption`, `Product`, `ProductsPage`, `ProductsQueryArgs`, `User`, `LoginRequest`, `LoginResponse` from `@/services/api/types`.
+  - `API_BASE_URL: string` from `@/services/api/config`.
   - `interface Storage { getItem(key): Promise<string | null>; setItem(key, value): Promise<void>; removeItem(key): Promise<void> }`.
-  - `storage: Storage` (implementación por defecto, AsyncStorage) y `createMemoryStorage(): Storage` desde `@/services/storage`.
+  - `storage: Storage` (default implementation, AsyncStorage) and `createMemoryStorage(): Storage` from `@/services/storage`.
   - `STORAGE_KEYS.accessToken`, `STORAGE_KEYS.user`, `STORAGE_KEYS.favorites`.
 
-- [ ] **Step 1: Instalar AsyncStorage**
+- [ ] **Step 1: Install AsyncStorage**
 
 ```bash
 npm install @react-native-async-storage/async-storage
 cd ios && pod install && cd ..
 ```
 
-- [ ] **Step 2: Escribir el contrato de la API**
+- [ ] **Step 2: Write the API contract**
 
 `src/services/api/types.ts`:
 
@@ -530,7 +530,7 @@ export interface Product {
   id: string;
   name: string;
   description: string;
-  /** En centavos, entero. Ver src/utils/formatPrice.ts. */
+  /** In cents, integer. See src/utils/formatPrice.ts. */
   priceCents: number;
   category: Category;
   rating: number;
@@ -540,12 +540,12 @@ export interface Product {
 
 export interface ProductsPage {
   items: Product[];
-  /** `null` cuando no hay más páginas. */
+  /** `null` when there are no more pages. */
   nextCursor: string | null;
   total: number;
 }
 
-/** Argumentos de cache de la infiniteQuery de productos. */
+/** Cache arguments for the products infiniteQuery. */
 export interface ProductsQueryArgs {
   q: string;
   category: Category | 'all';
@@ -573,30 +573,31 @@ export interface ApiErrorBody {
 }
 ```
 
-- [ ] **Step 3: Escribir la config de la API**
+- [ ] **Step 3: Write the API config**
 
 `src/services/api/config.ts`:
 
 ```ts
 /**
- * Host ficticio: no existe ningún servidor detrás. MSW intercepta a nivel de red
- * tanto en dev como en tests, así que la app hace HTTP real contra esta URL y no
- * sabe que está mockeada. El día que exista un backend, cambia solo esta línea.
+ * Fictitious host: there's no real server behind it. MSW intercepts at the
+ * network level both in dev and in tests, so the app makes real HTTP calls
+ * against this URL and doesn't know it's mocked. The day a backend exists,
+ * only this line changes.
  */
 export const API_BASE_URL = 'http://localhost:3000/api';
 
 export const PAGE_SIZE = 10;
 ```
 
-- [ ] **Step 4: Escribir la interfaz de storage y las claves**
+- [ ] **Step 4: Write the storage interface and the keys**
 
 `src/services/storage/types.ts`:
 
 ```ts
 /**
- * Fachada mínima sobre el almacenamiento persistente. Existe para que el
- * reemplazo de AsyncStorage por react-native-keychain sea un solo archivo
- * (ADR-003) y para poder inyectar una implementación en memoria en los tests.
+ * Minimal facade over persistent storage. It exists so that replacing
+ * AsyncStorage with react-native-keychain is a single-file change (ADR-003),
+ * and so a memory implementation can be injected in tests.
  */
 export interface Storage {
   getItem(key: string): Promise<string | null>;
@@ -615,7 +616,7 @@ export const STORAGE_KEYS = {
 } as const;
 ```
 
-- [ ] **Step 5: Escribir el test que falla del storage en memoria**
+- [ ] **Step 5: Write the failing in-memory storage test**
 
 `src/services/storage/__tests__/memoryStorage.test.ts`:
 
@@ -623,32 +624,32 @@ export const STORAGE_KEYS = {
 import {createMemoryStorage} from '../memoryStorage';
 
 describe('createMemoryStorage', () => {
-  it('devuelve null para una clave que no existe', async () => {
+  it('returns null for a key that does not exist', async () => {
     const storage = createMemoryStorage();
-    await expect(storage.getItem('ausente')).resolves.toBeNull();
+    await expect(storage.getItem('missing')).resolves.toBeNull();
   });
 
-  it('guarda y lee un valor', async () => {
+  it('saves and reads a value', async () => {
     const storage = createMemoryStorage();
     await storage.setItem('token', 'abc');
     await expect(storage.getItem('token')).resolves.toBe('abc');
   });
 
-  it('sobrescribe un valor existente', async () => {
+  it('overwrites an existing value', async () => {
     const storage = createMemoryStorage();
     await storage.setItem('token', 'abc');
     await storage.setItem('token', 'def');
     await expect(storage.getItem('token')).resolves.toBe('def');
   });
 
-  it('borra un valor', async () => {
+  it('deletes a value', async () => {
     const storage = createMemoryStorage();
     await storage.setItem('token', 'abc');
     await storage.removeItem('token');
     await expect(storage.getItem('token')).resolves.toBeNull();
   });
 
-  it('aísla instancias distintas', async () => {
+  it('isolates distinct instances', async () => {
     const a = createMemoryStorage();
     const b = createMemoryStorage();
     await a.setItem('token', 'abc');
@@ -657,19 +658,19 @@ describe('createMemoryStorage', () => {
 });
 ```
 
-- [ ] **Step 6: Correr el test y verificar que falla**
+- [ ] **Step 6: Run the test and verify it fails**
 
 Run: `npx jest src/services/storage --no-coverage`
 Expected: FAIL — `Cannot find module '../memoryStorage'`.
 
-- [ ] **Step 7: Implementar las dos implementaciones de `Storage`**
+- [ ] **Step 7: Implement the two `Storage` implementations**
 
 `src/services/storage/memoryStorage.ts`:
 
 ```ts
 import type {Storage} from './types';
 
-/** Implementación para tests: sin efectos de módulo, aislada por instancia. */
+/** Implementation for tests: no module-level effects, isolated per instance. */
 export function createMemoryStorage(): Storage {
   const map = new Map<string, string>();
   return {
@@ -694,10 +695,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {Storage} from './types';
 
 /**
- * ADR-003: en producción esto debería ser react-native-keychain (Keychain en iOS,
- * EncryptedSharedPreferences en Android). Se eligió AsyncStorage para no sumar
- * dependencias nativas. El tradeoff está declarado en el README; el reemplazo
- * afecta únicamente a este archivo.
+ * ADR-003: in production this should be react-native-keychain (Keychain on
+ * iOS, EncryptedSharedPreferences on Android). AsyncStorage was chosen to
+ * avoid adding native dependencies. The tradeoff is declared in the README;
+ * the replacement affects only this file.
  */
 export const asyncStorage: Storage = {
   getItem: key => AsyncStorage.getItem(key),
@@ -720,22 +721,22 @@ export type {Storage} from './types';
 export const storage: Storage = asyncStorage;
 ```
 
-- [ ] **Step 8: Correr el test y verificar que pasa**
+- [ ] **Step 8: Run the test and verify it passes**
 
 Run: `npx jest src/services/storage --no-coverage`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 9: Verificación completa y commit**
+- [ ] **Step 9: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: contrato de API y servicio de storage detrás de una interfaz"
+git commit -m "feat: API contract and storage service behind an interface"
 ```
 
 ---
 
-## Task 3: Base de datos mock
+## Task 3: Mock database
 
 **Files:**
 
@@ -744,16 +745,16 @@ git commit -m "feat: contrato de API y servicio de storage detrás de una interf
 
 **Interfaces:**
 
-- Consumes: `Category`, `Product`, `ProductsPage`, `SortOption` de `@/services/api/types`; `PAGE_SIZE` de `@/services/api/config`.
+- Consumes: `Category`, `Product`, `ProductsPage`, `SortOption` from `@/services/api/types`; `PAGE_SIZE` from `@/services/api/config`.
 - Produces:
 
-  - `PRODUCTS: Product[]` (50 productos deterministas, 5 categorías × 10).
+  - `PRODUCTS: Product[]` (50 deterministic products, 5 categories × 10).
   - `queryProducts(params: QueryProductsParams): ProductsPage`
   - `findProduct(id: string): Product | undefined`
   - `DEMO_USER: User`, `DEMO_PASSWORD: string`
   - `interface QueryProductsParams { q?: string; category?: Category | 'all'; sort?: SortOption; cursor?: string | null; limit?: number }`
 
-- [ ] **Step 1: Escribir el test que falla del dataset y la búsqueda**
+- [ ] **Step 1: Write the failing dataset and search test**
 
 `src/mocks/__tests__/db.test.ts`:
 
@@ -763,16 +764,16 @@ import {CATEGORIES} from '@/services/api/types';
 import {findProduct, PRODUCTS, queryProducts} from '../db';
 
 describe('PRODUCTS', () => {
-  it('tiene 50 productos', () => {
+  it('has 50 products', () => {
     expect(PRODUCTS).toHaveLength(50);
   });
 
-  it('tiene ids únicos', () => {
+  it('has unique ids', () => {
     const ids = new Set(PRODUCTS.map(p => p.id));
     expect(ids.size).toBe(PRODUCTS.length);
   });
 
-  it('cubre las 5 categorías con 10 productos cada una', () => {
+  it('covers the 5 categories with 10 products each', () => {
     for (const category of CATEGORIES) {
       expect(PRODUCTS.filter(p => p.category === category)).toHaveLength(10);
     }
@@ -780,14 +781,14 @@ describe('PRODUCTS', () => {
 });
 
 describe('queryProducts', () => {
-  it('devuelve la primera página con el tamaño pedido', () => {
+  it('returns the first page with the requested size', () => {
     const page = queryProducts({limit: 10});
     expect(page.items).toHaveLength(10);
     expect(page.total).toBe(50);
     expect(page.nextCursor).not.toBeNull();
   });
 
-  it('pagina por cursor sin repetir elementos', () => {
+  it('paginates by cursor without repeating items', () => {
     const first = queryProducts({limit: 10});
     const second = queryProducts({limit: 10, cursor: first.nextCursor});
     const firstIds = first.items.map(p => p.id);
@@ -796,19 +797,19 @@ describe('queryProducts', () => {
     expect(firstIds.some(id => secondIds.includes(id))).toBe(false);
   });
 
-  it('devuelve nextCursor null en la última página', () => {
+  it('returns a null nextCursor on the last page', () => {
     const page = queryProducts({limit: 50});
     expect(page.items).toHaveLength(50);
     expect(page.nextCursor).toBeNull();
   });
 
-  it('filtra por categoría', () => {
+  it('filters by category', () => {
     const page = queryProducts({category: 'audio', limit: 50});
     expect(page.total).toBe(10);
     expect(page.items.every(p => p.category === 'audio')).toBe(true);
   });
 
-  it('busca por nombre sin distinguir mayúsculas', () => {
+  it('searches by name case-insensitively', () => {
     const page = queryProducts({q: 'nimbus', limit: 50});
     expect(page.total).toBeGreaterThan(0);
     expect(
@@ -818,32 +819,32 @@ describe('queryProducts', () => {
     ).toBe(true);
   });
 
-  it('devuelve una página vacía cuando no hay coincidencias', () => {
+  it('returns an empty page when there are no matches', () => {
     const page = queryProducts({q: 'zzzznoexiste', limit: 50});
     expect(page.items).toEqual([]);
     expect(page.total).toBe(0);
     expect(page.nextCursor).toBeNull();
   });
 
-  it('ordena por precio ascendente', () => {
+  it('sorts by ascending price', () => {
     const {items} = queryProducts({sort: 'price_asc', limit: 50});
     const prices = items.map(p => p.priceCents);
     expect([...prices].sort((a, b) => a - b)).toEqual(prices);
   });
 
-  it('ordena por precio descendente', () => {
+  it('sorts by descending price', () => {
     const {items} = queryProducts({sort: 'price_desc', limit: 50});
     const prices = items.map(p => p.priceCents);
     expect([...prices].sort((a, b) => b - a)).toEqual(prices);
   });
 
-  it('ordena por nombre alfabéticamente por defecto', () => {
+  it('sorts by name alphabetically by default', () => {
     const {items} = queryProducts({limit: 50});
     const names = items.map(p => p.name);
-    expect([...names].sort((a, b) => a.localeCompare(b, 'es'))).toEqual(names);
+    expect([...names].sort((a, b) => a.localeCompare(b, 'en'))).toEqual(names);
   });
 
-  it('combina búsqueda, filtro y orden', () => {
+  it('combines search, filter, and sort', () => {
     const page = queryProducts({
       q: 'a',
       category: 'gaming',
@@ -857,24 +858,24 @@ describe('queryProducts', () => {
 });
 
 describe('findProduct', () => {
-  it('encuentra un producto por id', () => {
+  it('finds a product by id', () => {
     const first = PRODUCTS[0];
     expect(first).toBeDefined();
     expect(findProduct(first!.id)).toEqual(first);
   });
 
-  it('devuelve undefined para un id inexistente', () => {
+  it('returns undefined for a nonexistent id', () => {
     expect(findProduct('no-existe')).toBeUndefined();
   });
 });
 ```
 
-- [ ] **Step 2: Correr el test y verificar que falla**
+- [ ] **Step 2: Run the test and verify it fails**
 
 Run: `npx jest src/mocks --no-coverage`
 Expected: FAIL — `Cannot find module '../db'`.
 
-- [ ] **Step 3: Implementar `db.ts`**
+- [ ] **Step 3: Implement `db.ts`**
 
 `src/mocks/db.ts`:
 
@@ -890,11 +891,11 @@ import type {
 } from '@/services/api/types';
 
 const BASE_NAMES: Record<Category, string> = {
-  audio: 'Auriculares',
+  audio: 'Headphones',
   wearables: 'Smartwatch',
-  computers: 'Notebook',
+  computers: 'Laptop',
   gaming: 'Gamepad',
-  home: 'Lámpara',
+  home: 'Lamp',
 };
 
 const VARIANTS = [
@@ -911,8 +912,8 @@ const VARIANTS = [
 ] as const;
 
 /**
- * Dataset determinista: mismos datos en cada corrida y en cada máquina, para que
- * los tests no dependan de un seed aleatorio y la demo sea reproducible.
+ * Deterministic dataset: same data on every run and on every machine, so that
+ * tests don't depend on a random seed and the demo is reproducible.
  */
 export const PRODUCTS: Product[] = CATEGORIES.flatMap(
   (category, categoryIndex) =>
@@ -923,9 +924,9 @@ export const PRODUCTS: Product[] = CATEGORIES.flatMap(
         name: `${BASE_NAMES[category]} ${variant}`,
         description: `${
           BASE_NAMES[category]
-        } ${variant} de la línea ${category}, edición ${
+        } ${variant} from the ${category} line, ${
           2020 + (variantIndex % 6)
-        }.`,
+        } edition.`,
         priceCents: 1999 + index * 1500,
         category,
         rating: Number((3 + ((index * 7) % 21) / 10).toFixed(1)),
@@ -958,14 +959,15 @@ function compare(sort: SortOption): (a: Product, b: Product) => number {
     case 'price_desc':
       return (a, b) => b.priceCents - a.priceCents;
     case 'name':
-      return (a, b) => a.name.localeCompare(b.name, 'es');
+      return (a, b) => a.name.localeCompare(b.name, 'en');
   }
 }
 
 /**
- * Paginado por cursor (el id del último elemento devuelto) en vez de por offset:
- * es lo que hace un backend real y evita saltos cuando el dataset cambia entre
- * páginas. Si el cursor no se encuentra, se empieza desde el principio.
+ * Cursor-based pagination (the id of the last item returned) instead of
+ * offset-based: it's what a real backend does, and it avoids jumps when the
+ * dataset changes between pages. If the cursor isn't found, it starts over
+ * from the beginning.
  */
 export function queryProducts(params: QueryProductsParams = {}): ProductsPage {
   const {
@@ -1006,22 +1008,22 @@ export function findProduct(id: string): Product | undefined {
 }
 ```
 
-- [ ] **Step 4: Correr el test y verificar que pasa**
+- [ ] **Step 4: Run the test and verify it passes**
 
 Run: `npx jest src/mocks --no-coverage`
 Expected: PASS, 15 tests.
 
-- [ ] **Step 5: Verificación completa y commit**
+- [ ] **Step 5: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: base de datos mock con búsqueda, filtro, orden y paginado por cursor"
+git commit -m "feat: mock database with search, filter, sort, and cursor pagination"
 ```
 
 ---
 
-## Task 4: Handlers de MSW y arranque en tests y en dev
+## Task 4: MSW handlers and startup in tests and in dev
 
 **Files:**
 
@@ -1037,23 +1039,23 @@ git commit -m "feat: base de datos mock con búsqueda, filtro, orden y paginado 
 
 **Interfaces:**
 
-- Consumes: `queryProducts`, `findProduct`, `DEMO_USER`, `DEMO_PASSWORD` de `../db`; `API_BASE_URL`, `PAGE_SIZE` de `@/services/api/config`.
+- Consumes: `queryProducts`, `findProduct`, `DEMO_USER`, `DEMO_PASSWORD` from `../db`; `API_BASE_URL`, `PAGE_SIZE` from `@/services/api/config`.
 - Produces:
 
-  - `handlers: RequestHandler[]` desde `@/mocks/handlers`
-  - `server` (msw/node) desde `@/mocks/server.node`
-  - `startMockServer(): Promise<void>` desde `@/mocks/server.native`
-  - Endpoints: `POST /api/auth/login`, `GET /api/auth/me`, `GET /api/products`, `GET /api/products/:id`. Query params de `/products`: `q`, `category`, `sort`, `cursor`, `limit`, `fail`.
-  - Token emitido en login: `'demo-access-token'`.
+  - `handlers: RequestHandler[]` from `@/mocks/handlers`
+  - `server` (msw/node) from `@/mocks/server.node`
+  - `startMockServer(): Promise<void>` from `@/mocks/server.native`
+  - Endpoints: `POST /api/auth/login`, `GET /api/auth/me`, `GET /api/products`, `GET /api/products/:id`. `/products` query params: `q`, `category`, `sort`, `cursor`, `limit`, `fail`.
+  - Token issued on login: `'demo-access-token'`.
 
-- [ ] **Step 1: Instalar MSW y sus polyfills de RN**
+- [ ] **Step 1: Install MSW and its RN polyfills**
 
 ```bash
 npm install --save-dev msw@2.15
 npm install react-native-url-polyfill fast-text-encoding
 ```
 
-- [ ] **Step 2: Escribir el test que falla de los handlers**
+- [ ] **Step 2: Write the failing handlers test**
 
 `src/mocks/__tests__/handlers.test.ts`:
 
@@ -1063,8 +1065,8 @@ import type {LoginResponse, Product, ProductsPage} from '@/services/api/types';
 
 import {DEMO_PASSWORD, DEMO_USER} from '../db';
 
-describe('handlers de auth', () => {
-  it('devuelve token y usuario con credenciales válidas', async () => {
+describe('auth handlers', () => {
+  it('returns a token and user with valid credentials', async () => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -1076,7 +1078,7 @@ describe('handlers de auth', () => {
     expect(body.user).toEqual(DEMO_USER);
   });
 
-  it('devuelve 401 con credenciales inválidas', async () => {
+  it('returns 401 with invalid credentials', async () => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -1085,12 +1087,12 @@ describe('handlers de auth', () => {
     expect(response.status).toBe(401);
   });
 
-  it('GET /auth/me devuelve 401 sin Authorization', async () => {
+  it('GET /auth/me returns 401 without Authorization', async () => {
     const response = await fetch(`${API_BASE_URL}/auth/me`);
     expect(response.status).toBe(401);
   });
 
-  it('GET /auth/me devuelve el usuario con un token válido', async () => {
+  it('GET /auth/me returns the user with a valid token', async () => {
     const response = await fetch(`${API_BASE_URL}/auth/me`, {
       headers: {Authorization: 'Bearer demo-access-token'},
     });
@@ -1099,8 +1101,8 @@ describe('handlers de auth', () => {
   });
 });
 
-describe('handlers de productos', () => {
-  it('devuelve una página de productos', async () => {
+describe('product handlers', () => {
+  it('returns a page of products', async () => {
     const response = await fetch(`${API_BASE_URL}/products?limit=10`);
     expect(response.status).toBe(200);
     const page = (await response.json()) as ProductsPage;
@@ -1108,7 +1110,7 @@ describe('handlers de productos', () => {
     expect(page.total).toBe(50);
   });
 
-  it('respeta el filtro de categoría', async () => {
+  it('respects the category filter', async () => {
     const response = await fetch(
       `${API_BASE_URL}/products?category=audio&limit=50`,
     );
@@ -1116,31 +1118,31 @@ describe('handlers de productos', () => {
     expect(page.total).toBe(10);
   });
 
-  it('devuelve un producto por id', async () => {
+  it('returns a product by id', async () => {
     const response = await fetch(`${API_BASE_URL}/products/p-001`);
     expect(response.status).toBe(200);
     const product = (await response.json()) as Product;
     expect(product.id).toBe('p-001');
   });
 
-  it('devuelve 404 para un producto inexistente', async () => {
+  it('returns 404 for a nonexistent product', async () => {
     const response = await fetch(`${API_BASE_URL}/products/no-existe`);
     expect(response.status).toBe(404);
   });
 
-  it('inyecta un 500 con ?fail=1', async () => {
+  it('injects a 500 with ?fail=1', async () => {
     const response = await fetch(`${API_BASE_URL}/products?fail=1`);
     expect(response.status).toBe(500);
   });
 });
 ```
 
-- [ ] **Step 3: Correr el test y verificar que falla**
+- [ ] **Step 3: Run the test and verify it fails**
 
 Run: `npx jest src/mocks/__tests__/handlers --no-coverage`
-Expected: FAIL — el `fetch` no está interceptado (error de conexión a `localhost:3000`) o `Cannot find module`.
+Expected: FAIL — the `fetch` isn't intercepted (connection error to `localhost:3000`) or `Cannot find module`.
 
-- [ ] **Step 4: Escribir los handlers de auth**
+- [ ] **Step 4: Write the auth handlers**
 
 `src/mocks/handlers/auth.ts`:
 
@@ -1160,8 +1162,8 @@ import {DEMO_PASSWORD, DEMO_USER} from '../db';
 export const ACCESS_TOKEN = 'demo-access-token';
 
 /**
- * Latencia artificial solo fuera de los tests: en la demo hace visibles los
- * skeletons y los estados de carga; en Jest solo haría los tests más lentos.
+ * Artificial latency only outside of tests: in the demo it makes skeletons
+ * and loading states visible; in Jest it would only make tests slower.
  */
 const withLatency = process.env.NODE_ENV !== 'test';
 
@@ -1183,7 +1185,7 @@ export const authHandlers = [
         password !== DEMO_PASSWORD
       ) {
         return HttpResponse.json<ApiErrorBody>(
-          {message: 'Credenciales inválidas'},
+          {message: 'Invalid credentials'},
           {status: 401},
         );
       }
@@ -1200,7 +1202,7 @@ export const authHandlers = [
 
     if (request.headers.get('Authorization') !== `Bearer ${ACCESS_TOKEN}`) {
       return HttpResponse.json<ApiErrorBody>(
-        {message: 'No autorizado'},
+        {message: 'Unauthorized'},
         {status: 401},
       );
     }
@@ -1210,7 +1212,7 @@ export const authHandlers = [
 ];
 ```
 
-- [ ] **Step 5: Escribir los handlers de productos**
+- [ ] **Step 5: Write the product handlers**
 
 `src/mocks/handlers/products.ts`:
 
@@ -1253,10 +1255,10 @@ export const productHandlers = [
     const url = new URL(request.url);
     await maybeDelay();
 
-    // Inyección de fallos para demostrar el manejo de errores en vivo.
+    // Failure injection to demonstrate error handling live.
     if (url.searchParams.get('fail') === '1') {
       return HttpResponse.json<ApiErrorBody>(
-        {message: 'Fallo inyectado'},
+        {message: 'Injected failure'},
         {status: 500},
       );
     }
@@ -1280,7 +1282,7 @@ export const productHandlers = [
 
     if (!product) {
       return HttpResponse.json<ApiErrorBody>(
-        {message: 'Producto no encontrado'},
+        {message: 'Product not found'},
         {status: 404},
       );
     }
@@ -1290,7 +1292,7 @@ export const productHandlers = [
 ];
 ```
 
-- [ ] **Step 6: Escribir el barril de handlers**
+- [ ] **Step 6: Write the handlers barrel**
 
 `src/mocks/handlers/index.ts`:
 
@@ -1299,15 +1301,15 @@ import {authHandlers} from './auth';
 import {productHandlers} from './products';
 
 /**
- * Única fuente de verdad del contrato de API: los mismos handlers alimentan la
- * app en desarrollo (msw/native) y los tests (msw/node).
+ * Single source of truth for the API contract: the same handlers feed the
+ * app in development (msw/native) and the tests (msw/node).
  */
 export const handlers = [...authHandlers, ...productHandlers];
 
 export {ACCESS_TOKEN} from './auth';
 ```
 
-- [ ] **Step 7: Escribir los dos arranques del servidor**
+- [ ] **Step 7: Write the two server startups**
 
 `src/mocks/server.node.ts`:
 
@@ -1329,13 +1331,13 @@ import {handlers} from './handlers';
 export const server = setupServer(...handlers);
 
 export async function startMockServer(): Promise<void> {
-  // 'bypass': las imágenes remotas las pide el módulo nativo de Image, no el
-  // fetch de JS, pero cualquier request no manejada no debe romper la demo.
+  // 'bypass': remote images are requested by the native Image module, not
+  // JS's fetch, but any unhandled request must not break the demo.
   server.listen({onUnhandledRequest: 'bypass'});
 }
 ```
 
-- [ ] **Step 8: Conectar MSW a los tests**
+- [ ] **Step 8: Wire MSW into the tests**
 
 `src/test/setup.ts`:
 
@@ -1350,32 +1352,32 @@ jest.mock('react-native-safe-area-context', () =>
   require('react-native-safe-area-context/jest/mock'),
 );
 
-// 'error' obliga a que todo request de un test esté explícitamente mockeado:
-// un endpoint nuevo sin handler falla en vez de colgarse.
+// 'error' forces every request in a test to be explicitly mocked: a new
+// endpoint without a handler fails instead of hanging.
 beforeAll(() => server.listen({onUnhandledRequest: 'error'}));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 ```
 
-> `react-native-safe-area-context` todavía no está instalado (llega en la Task 6). Hasta entonces, dejar comentado ese `jest.mock` y descomentarlo en la Task 6. Si al correr esta task el mock rompe, comentarlo es la acción correcta, no borrar el archivo.
+> `react-native-safe-area-context` isn't installed yet (it arrives in Task 6). Until then, leave that `jest.mock` commented out and uncomment it in Task 6. If running this task breaks the mock, commenting it out is the right move, not deleting the file.
 
-- [ ] **Step 9: Correr el test de handlers y verificar que pasa**
+- [ ] **Step 9: Run the handlers test and verify it passes**
 
 Run: `npx jest src/mocks/__tests__/handlers --no-coverage`
 Expected: PASS, 9 tests.
 
-**Si falla con errores de resolución de módulos de `msw`:** el `transformIgnorePatterns` de `jest.config.js` (Task 1, Step 12) debe incluir el paquete que aparece en el error. Agregarlo a la lista y volver a correr.
+**If it fails with `msw` module resolution errors:** `jest.config.js`'s `transformIgnorePatterns` (Task 1, Step 12) must include the package named in the error. Add it to the list and run again.
 
-- [ ] **Step 10: Escribir los polyfills de RN**
+- [ ] **Step 10: Write the RN polyfills**
 
-`msw.polyfills.js` (en la raíz):
+`msw.polyfills.js` (at the root):
 
 ```js
 import 'fast-text-encoding';
 import 'react-native-url-polyfill/auto';
 ```
 
-- [ ] **Step 11: Arrancar MSW en la app en dev**
+- [ ] **Step 11: Start MSW in the app in dev**
 
 `index.js`:
 
@@ -1399,31 +1401,31 @@ enableMocking().finally(() => {
 });
 ```
 
-> `src/app/App.tsx` todavía no existe: se crea en la Task 5. Hasta entonces, dejar `index.js` apuntando al `App.tsx` del template y cambiar el import en la Task 5.
+> `src/app/App.tsx` doesn't exist yet: it's created in Task 5. Until then, leave `index.js` pointing at the template's `App.tsx` and change the import in Task 5.
 
-- [ ] **Step 12: Verificar la intercepción en el dispositivo — punto de decisión de ADR-005**
+- [ ] **Step 12: Verify interception on the device — ADR-005 decision point**
 
-Agregar temporalmente en el `App.tsx` del template, dentro de un `useEffect`:
+Temporarily add to the template's `App.tsx`, inside a `useEffect`:
 
 ```tsx
 useEffect(() => {
   fetch('http://localhost:3000/api/products?limit=1')
     .then(r => r.json())
     .then(d => console.warn('MSW OK', d))
-    .catch(e => console.warn('MSW FALLO', e));
+    .catch(e => console.warn('MSW FAILED', e));
 }, []);
 ```
 
 Run: `npm run ios`
-Expected: en la consola de Metro aparece `MSW OK` con un producto.
+Expected: `MSW OK` appears in the Metro console with a product.
 
-**Si aparece `MSW FALLO`** (la documentación de MSW marca la integración con React Native como "potentially incomplete"): aplicar el fallback y anotarlo en el ADR-005 del README —
+**If `MSW FAILED` appears** (MSW's documentation marks the React Native integration as "potentially incomplete"): apply the fallback and note it in the README's ADR-005 —
 
-1. MSW **se mantiene tal cual para los tests** (`msw/node` funciona sin problemas bajo Jest). El valor de "una sola fuente de verdad del contrato" se conserva.
-2. Para dev, reemplazar `startMockServer` por un shim de `fetch` que enruta contra el mismo `db.ts`, instalado como efecto del entrypoint (fuera de `src/features` y `src/services`, así el código de la app sigue sin ninguna rama de mocking):
+1. MSW **stays as-is for the tests** (`msw/node` works fine under Jest). The value of "a single source of truth for the contract" is preserved.
+2. For dev, replace `startMockServer` with a `fetch` shim that routes against the same `db.ts`, installed as an entrypoint side effect (outside `src/features` and `src/services`, so the app's code still contains no mocking branch):
 
 ```ts
-// src/mocks/server.native.ts — variante de fallback
+// src/mocks/server.native.ts — fallback variant
 import {API_BASE_URL} from '@/services/api/config';
 
 import {handlers} from './handlers';
@@ -1450,19 +1452,19 @@ export async function startMockServer(): Promise<void> {
 }
 ```
 
-Borrar el `useEffect` temporal antes de commitear, en cualquiera de los dos caminos.
+Delete the temporary `useEffect` before committing, whichever of the two paths is taken.
 
-- [ ] **Step 13: Verificación completa y commit**
+- [ ] **Step 13: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: handlers MSW compartidos entre la app en dev y los tests"
+git commit -m "feat: MSW handlers shared between the app in dev and the tests"
 ```
 
 ---
 
-## Task 5: Store, baseApi y hooks tipados
+## Task 5: Store, baseApi, and typed hooks
 
 **Files:**
 
@@ -1473,28 +1475,28 @@ git commit -m "feat: handlers MSW compartidos entre la app en dev y los tests"
 - Create: `src/app/hooks.ts`
 - Create: `src/app/App.tsx`
 - Create: `src/test/renderWithProviders.tsx`
-- Modify: `index.js` (apuntar a `src/app/App`)
+- Modify: `index.js` (point at `src/app/App`)
 - Test: `src/services/api/__tests__/baseApi.test.ts`
 
 **Interfaces:**
 
-- Consumes: `API_BASE_URL` de `@/services/api/config`; `handlers` de `@/mocks/handlers`.
+- Consumes: `API_BASE_URL` from `@/services/api/config`; `handlers` from `@/mocks/handlers`.
 - Produces:
 
-  - `unauthorized` (action creator sin payload) desde `@/services/api/sessionEvents`
-  - `baseApi` (con `injectEndpoints`, `tagTypes: ['Product', 'User']`, `reducerPath: 'api'`) desde `@/services/api/baseApi`
-  - `listenerMiddleware`, `startAppListening` desde `@/app/listenerMiddleware`
-  - `makeStore(preloadedState?: Partial<RootState>): AppStore`, `store`, `RootState`, `AppDispatch`, `AppStore` desde `@/app/store`
-  - `useAppDispatch()`, `useAppSelector` desde `@/app/hooks`
-  - `renderWithProviders(ui, {preloadedState?, store?})` → `{store, ...RenderResult}` desde `@/test/renderWithProviders`
+  - `unauthorized` (payload-less action creator) from `@/services/api/sessionEvents`
+  - `baseApi` (with `injectEndpoints`, `tagTypes: ['Product', 'User']`, `reducerPath: 'api'`) from `@/services/api/baseApi`
+  - `listenerMiddleware`, `startAppListening` from `@/app/listenerMiddleware`
+  - `makeStore(preloadedState?: Partial<RootState>): AppStore`, `store`, `RootState`, `AppDispatch`, `AppStore` from `@/app/store`
+  - `useAppDispatch()`, `useAppSelector` from `@/app/hooks`
+  - `renderWithProviders(ui, {preloadedState?, store?})` → `{store, ...RenderResult}` from `@/test/renderWithProviders`
 
-- [ ] **Step 1: Instalar Redux**
+- [ ] **Step 1: Install Redux**
 
 ```bash
 npm install @reduxjs/toolkit react-redux
 ```
 
-- [ ] **Step 2: Escribir el evento de sesión neutral**
+- [ ] **Step 2: Write the neutral session event**
 
 `src/services/api/sessionEvents.ts`:
 
@@ -1502,15 +1504,15 @@ npm install @reduxjs/toolkit react-redux
 import {createAction} from '@reduxjs/toolkit';
 
 /**
- * La capa de servicios no puede importar de features (regla de dependencias del
- * spec §3.1), pero necesita avisar que la sesión caducó al recibir un 401.
- * Este action creator neutral invierte la dependencia: services lo despacha,
- * sessionSlice lo escucha.
+ * The services layer can't import from features (dependency rule from spec
+ * §3.1), but it needs to signal that the session expired upon receiving a
+ * 401. This neutral action creator inverts the dependency: services
+ * dispatches it, sessionSlice listens for it.
  */
 export const unauthorized = createAction('session/unauthorized');
 ```
 
-- [ ] **Step 3: Escribir el `baseApi`**
+- [ ] **Step 3: Write the `baseApi`**
 
 `src/services/api/baseApi.ts`:
 
@@ -1526,8 +1528,9 @@ import {API_BASE_URL} from './config';
 import {unauthorized} from './sessionEvents';
 
 /**
- * Se tipa solo el trozo del estado que hace falta en vez de importar RootState:
- * store.ts importa baseApi, así que importar RootState acá sería un ciclo.
+ * Only the slice of state that's needed is typed instead of importing
+ * RootState: store.ts imports baseApi, so importing RootState here would be
+ * a cycle.
  */
 interface StateWithSession {
   session: {accessToken: string | null};
@@ -1557,9 +1560,9 @@ const baseQueryWithAuth: BaseQueryFn<
 };
 
 /**
- * Una sola API para toda la app. Cada feature agrega sus endpoints con
- * `baseApi.injectEndpoints`, así el cache y los tags son compartidos sin que las
- * features se conozcan entre sí.
+ * A single API for the whole app. Each feature adds its endpoints with
+ * `baseApi.injectEndpoints`, so the cache and the tags are shared without the
+ * features knowing about each other.
  */
 export const baseApi = createApi({
   reducerPath: 'api',
@@ -1569,7 +1572,7 @@ export const baseApi = createApi({
 });
 ```
 
-- [ ] **Step 4: Escribir el listener middleware tipado**
+- [ ] **Step 4: Write the typed listener middleware**
 
 `src/app/listenerMiddleware.ts`:
 
@@ -1581,8 +1584,9 @@ import type {AppDispatch, RootState} from './store';
 export const listenerMiddleware = createListenerMiddleware();
 
 /**
- * `withTypes` evita repetir los genéricos en cada listener. El import de
- * RootState/AppDispatch es solo de tipos, así que no crea un ciclo en runtime.
+ * `withTypes` avoids repeating the generics in every listener. The
+ * RootState/AppDispatch import is type-only, so it doesn't create a runtime
+ * cycle.
  */
 export const startAppListening = listenerMiddleware.startListening.withTypes<
   RootState,
@@ -1592,7 +1596,7 @@ export const startAppListening = listenerMiddleware.startListening.withTypes<
 export type AppStartListening = typeof startAppListening;
 ```
 
-- [ ] **Step 5: Escribir el store**
+- [ ] **Step 5: Write the store**
 
 `src/app/store.ts`:
 
@@ -1626,9 +1630,9 @@ export type AppStore = ReturnType<typeof makeStore>;
 export type AppDispatch = AppStore['dispatch'];
 ```
 
-> Los slices se van agregando a `rootReducer` en las tasks siguientes: `auth` (Task 7), `catalog` (Task 10), `favorites` (Task 13).
+> Slices get added to `rootReducer` in the following tasks: `auth` (Task 7), `catalog` (Task 10), `favorites` (Task 13).
 
-- [ ] **Step 6: Escribir los hooks tipados**
+- [ ] **Step 6: Write the typed hooks**
 
 `src/app/hooks.ts`:
 
@@ -1637,12 +1641,12 @@ import {useDispatch, useSelector} from 'react-redux';
 
 import type {AppDispatch, RootState} from './store';
 
-/** Nunca se usa `useDispatch`/`useSelector` crudos en la app: siempre estos. */
+/** Raw `useDispatch`/`useSelector` are never used in the app: always these. */
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
 ```
 
-- [ ] **Step 7: Escribir el `App.tsx` de composición**
+- [ ] **Step 7: Write the composition `App.tsx`**
 
 `src/app/App.tsx`:
 
@@ -1657,13 +1661,13 @@ export default function App() {
 }
 ```
 
-> El árbol de navegación entra en la Task 9. Este archivo es el punto de composición de providers y crece ahí.
+> The navigation tree arrives in Task 9. This file is the provider composition point and grows there.
 
-- [ ] **Step 8: Apuntar `index.js` a `src/app/App`**
+- [ ] **Step 8: Point `index.js` at `src/app/App`**
 
-Cambiar en `index.js` el import del componente raíz por `import App from './src/app/App';` y borrar el `App.tsx` del template en la raíz si existe.
+In `index.js`, change the root component import to `import App from './src/app/App';` and delete the template's `App.tsx` at the root if it exists.
 
-- [ ] **Step 9: Escribir el helper de tests**
+- [ ] **Step 9: Write the test helper**
 
 `src/test/renderWithProviders.tsx`:
 
@@ -1682,8 +1686,8 @@ interface ExtendedRenderOptions {
 }
 
 /**
- * Store fresco por test: el cache de RTK Query es estado global, y compartirlo
- * entre tests los vuelve dependientes del orden de ejecución.
+ * A fresh store per test: the RTK Query cache is global state, and sharing
+ * it across tests makes them dependent on execution order.
  */
 export function renderWithProviders(
   ui: ReactElement,
@@ -1700,9 +1704,9 @@ export function renderWithProviders(
 }
 ```
 
-> El `NavigationContainer` se agrega a este wrapper en la Task 9, cuando exista.
+> The `NavigationContainer` is added to this wrapper in Task 9, once it exists.
 
-- [ ] **Step 10: Escribir el test del store**
+- [ ] **Step 10: Write the store test**
 
 `src/services/api/__tests__/baseApi.test.ts`:
 
@@ -1712,36 +1716,37 @@ import {makeStore} from '@/app/store';
 import {baseApi} from '../baseApi';
 
 describe('store', () => {
-  it('monta el reducer de la API bajo la clave `api`', () => {
+  it('mounts the API reducer under the `api` key', () => {
     const store = makeStore();
     expect(store.getState()).toHaveProperty(baseApi.reducerPath);
   });
 
-  it('crea stores independientes', () => {
+  it('creates independent stores', () => {
     expect(makeStore()).not.toBe(makeStore());
   });
 });
 ```
 
-> Los casos que ejercitan el `Authorization` header y el 401 necesitan el slice
-> `session`, que llega en la Task 7. Se agregan ahí (Task 7, Step 10), no acá.
+> The cases that exercise the `Authorization` header and the 401 need the
+> `session` slice, which arrives in Task 7. They're added there (Task 7, Step
+> 10), not here.
 
-- [ ] **Step 11: Correr el test y verificar que pasa**
+- [ ] **Step 11: Run the test and verify it passes**
 
 Run: `npx jest src/services/api --no-coverage`
 Expected: PASS, 2 tests.
 
-- [ ] **Step 12: Verificación completa y commit**
+- [ ] **Step 12: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: store de Redux, baseApi con auth y 401, y hooks tipados"
+git commit -m "feat: Redux store, baseApi with auth and 401 handling, and typed hooks"
 ```
 
 ---
 
-## Task 6: Theme tokens y componentes de UI
+## Task 6: Theme tokens and UI components
 
 **Files:**
 
@@ -1753,13 +1758,13 @@ git commit -m "feat: store de Redux, baseApi con auth y 401, y hooks tipados"
 - Create: `src/components/ui/ErrorView.tsx`
 - Create: `src/components/ui/Skeleton.tsx`
 - Create: `src/components/ui/index.ts`
-- Modify: `src/test/setup.ts` (descomentar el mock de safe-area-context)
+- Modify: `src/test/setup.ts` (uncomment the safe-area-context mock)
 - Test: `src/components/ui/__tests__/Button.test.tsx`
 
 **Interfaces:**
 
-- Consumes: nada de tasks previas.
-- Produces desde `@/components/ui`:
+- Consumes: nothing from previous tasks.
+- Produces from `@/components/ui`:
 
   - `<Screen>{children}</Screen>` — `{children: ReactNode; scroll?: boolean}`
   - `<Button title label onPress disabled loading testID />` — `{label: string; onPress: () => void; disabled?: boolean; loading?: boolean; variant?: 'primary' | 'ghost'; testID?: string}`
@@ -1767,27 +1772,27 @@ git commit -m "feat: store de Redux, baseApi con auth y 401, y hooks tipados"
   - `<EmptyState />` — `{title: string; message?: string}`
   - `<ErrorView />` — `{message: string; onRetry?: () => void}`
   - `<Skeleton />` — `{height: number; width?: number | string; style?: ViewStyle}`
-  - `tokens` desde `@/theme/tokens` con `colors`, `spacing`, `radius`, `typography`.
+  - `tokens` from `@/theme/tokens` with `colors`, `spacing`, `radius`, `typography`.
 
-- [ ] **Step 1: Instalar las dependencias de layout**
+- [ ] **Step 1: Install the layout dependencies**
 
 ```bash
 npm install react-native-safe-area-context
 cd ios && pod install && cd ..
 ```
 
-- [ ] **Step 2: Descomentar el mock de safe-area-context**
+- [ ] **Step 2: Uncomment the safe-area-context mock**
 
-En `src/test/setup.ts`, activar el `jest.mock('react-native-safe-area-context', ...)` que quedó comentado en la Task 4, Step 8.
+In `src/test/setup.ts`, enable the `jest.mock('react-native-safe-area-context', ...)` that was left commented out in Task 4, Step 8.
 
-- [ ] **Step 3: Escribir los tokens**
+- [ ] **Step 3: Write the tokens**
 
 `src/theme/tokens.ts`:
 
 ```ts
 /**
- * Constantes, no theming en runtime. El dark mode es un no-objetivo declarado
- * del spec: agregarlo significaría un ThemeProvider y un hook, no cambiar esto.
+ * Constants, not runtime theming. Dark mode is a declared non-goal of the
+ * spec: adding it would mean a ThemeProvider and a hook, not changing this.
  */
 export const colors = {
   background: '#FFFFFF',
@@ -1825,7 +1830,7 @@ export const typography = {
 export const tokens = {colors, spacing, radius, typography};
 ```
 
-- [ ] **Step 4: Escribir `Screen`**
+- [ ] **Step 4: Write `Screen`**
 
 `src/components/ui/Screen.tsx`:
 
@@ -1862,7 +1867,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 5: Escribir el test que falla de `Button`**
+- [ ] **Step 5: Write the failing `Button` test**
 
 `src/components/ui/__tests__/Button.test.tsx`:
 
@@ -1873,36 +1878,36 @@ import React from 'react';
 import {Button} from '../Button';
 
 describe('Button', () => {
-  it('llama a onPress al tocarlo', () => {
+  it('calls onPress when tapped', () => {
     const onPress = jest.fn();
-    render(<Button label="Ingresar" onPress={onPress} />);
-    fireEvent.press(screen.getByText('Ingresar'));
+    render(<Button label="Sign in" onPress={onPress} />);
+    fireEvent.press(screen.getByText('Sign in'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('no llama a onPress cuando está deshabilitado', () => {
+  it('does not call onPress when disabled', () => {
     const onPress = jest.fn();
-    render(<Button label="Ingresar" onPress={onPress} disabled />);
-    fireEvent.press(screen.getByText('Ingresar'));
+    render(<Button label="Sign in" onPress={onPress} disabled />);
+    fireEvent.press(screen.getByText('Sign in'));
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  it('muestra un indicador y oculta el label mientras carga', () => {
+  it('shows an indicator and hides the label while loading', () => {
     render(
-      <Button label="Ingresar" onPress={jest.fn()} loading testID="submit" />,
+      <Button label="Sign in" onPress={jest.fn()} loading testID="submit" />,
     );
-    expect(screen.queryByText('Ingresar')).toBeNull();
+    expect(screen.queryByText('Sign in')).toBeNull();
     expect(screen.getByTestId('submit')).toBeDisabled();
   });
 });
 ```
 
-- [ ] **Step 6: Correr el test y verificar que falla**
+- [ ] **Step 6: Run the test and verify it fails**
 
 Run: `npx jest src/components --no-coverage`
 Expected: FAIL — `Cannot find module '../Button'`.
 
-- [ ] **Step 7: Escribir `Button`**
+- [ ] **Step 7: Write `Button`**
 
 `src/components/ui/Button.tsx`:
 
@@ -1975,12 +1980,12 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 8: Correr el test y verificar que pasa**
+- [ ] **Step 8: Run the test and verify it passes**
 
 Run: `npx jest src/components --no-coverage`
 Expected: PASS, 3 tests.
 
-- [ ] **Step 9: Escribir `TextField`**
+- [ ] **Step 9: Write `TextField`**
 
 `src/components/ui/TextField.tsx`:
 
@@ -2038,7 +2043,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 10: Escribir `EmptyState`, `ErrorView` y `Skeleton`**
+- [ ] **Step 10: Write `EmptyState`, `ErrorView`, and `Skeleton`**
 
 `src/components/ui/EmptyState.tsx`:
 
@@ -2090,7 +2095,7 @@ export function ErrorView({message, onRetry}: ErrorViewProps) {
       <Text style={styles.message}>{message}</Text>
       {onRetry != null && (
         <Button
-          label="Reintentar"
+          label="Retry"
           onPress={onRetry}
           variant="ghost"
           testID="retry"
@@ -2146,17 +2151,17 @@ export {Skeleton} from './Skeleton';
 export {TextField} from './TextField';
 ```
 
-- [ ] **Step 11: Verificación completa y commit**
+- [ ] **Step 11: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: tokens de diseño y componentes de UI compartidos"
+git commit -m "feat: design tokens and shared UI components"
 ```
 
 ---
 
-## Task 7: Sesión — slice, api y persistencia
+## Task 7: Session — slice, api, and persistence
 
 **Files:**
 
@@ -2165,32 +2170,32 @@ git commit -m "feat: tokens de diseño y componentes de UI compartidos"
 - Create: `src/services/session/sessionListeners.ts`
 - Create: `src/services/session/useSession.ts`
 - Create: `src/services/session/index.ts`
-- Modify: `src/app/store.ts` (montar el reducer `session` y registrar los listeners)
+- Modify: `src/app/store.ts` (mount the `session` reducer and register the listeners)
 - Test: `src/services/session/__tests__/sessionSlice.test.ts`
-- Test: `src/services/api/__tests__/baseApi.test.ts` (agregar los dos casos diferidos de la Task 5)
+- Test: `src/services/api/__tests__/baseApi.test.ts` (add the two cases deferred from Task 5)
 
 **Interfaces:**
 
-- Consumes: `baseApi` y `unauthorized` de `@/services/api/*`; `storage`, `STORAGE_KEYS`, `Storage` de `@/services/storage`; `LoginRequest`, `LoginResponse`, `User` de `@/services/api/types`; `AppStartListening` de `@/app/listenerMiddleware`.
+- Consumes: `baseApi` and `unauthorized` from `@/services/api/*`; `storage`, `STORAGE_KEYS`, `Storage` from `@/services/storage`; `LoginRequest`, `LoginResponse`, `User` from `@/services/api/types`; `AppStartListening` from `@/app/listenerMiddleware`.
 - Produces:
-  - `sessionApi` con `useLoginMutation()` y `useMeQuery()`; `sessionApi.endpoints.login.matchFulfilled`
-  - `sessionReducer` (default export del slice), `signedOut`, `sessionRestored`, `sessionMissing` actions
-  - `restoreSession(deps?: {storage?: Storage})` — thunk que hidrata la sesión desde storage
-  - `signOut()` — thunk que limpia slice, storage y cache de RTK Query
+  - `sessionApi` with `useLoginMutation()` and `useMeQuery()`; `sessionApi.endpoints.login.matchFulfilled`
+  - `sessionReducer` (the slice's default export), `signedOut`, `sessionRestored`, `sessionMissing` actions
+  - `restoreSession(deps?: {storage?: Storage})` — a thunk that hydrates the session from storage
+  - `signOut()` — a thunk that clears the slice, storage, and the RTK Query cache
   - `SessionState = {status: 'bootstrapping' | 'signedOut' | 'signedIn'; accessToken: string | null; user: User | null}`
   - `registerSessionListeners(startAppListening: AppStartListening): void`
   - `useSession()` → `{status, user, signIn, signOut, isSigningIn, error}`
 
-> **Por qué la sesión vive en `services/` y no en `features/auth/`:** el estado de
-> sesión lo consumen `navigation` (para decidir Auth vs. App), la feature `profile`
-> (datos del usuario y logout) y la capa de API (el 401). Si viviera dentro de la
-> feature `auth`, esos consumidores tendrían que importar de otra feature, que es
-> justo lo que la regla de dependencias prohíbe. La feature `auth` conserva lo que
-> es genuinamente suyo: la pantalla de login (Task 8). Es la regla del spec §3.1
-> haciendo su trabajo — obliga a decidir explícitamente qué es de una feature y qué
-> es transversal.
+> **Why the session lives in `services/` and not in `features/auth/`:** session
+> state is consumed by `navigation` (to decide Auth vs. App), the `profile`
+> feature (user data and logout), and the API layer (the 401). If it lived
+> inside the `auth` feature, those consumers would have to import from
+> another feature, which is exactly what the dependency rule forbids. The
+> `auth` feature keeps what's genuinely its own: the login screen (Task 8).
+> It's spec §3.1's rule doing its job — it forces an explicit decision about
+> what belongs to a feature and what's cross-cutting.
 
-- [ ] **Step 1: Escribir el test que falla del slice**
+- [ ] **Step 1: Write the failing slice test**
 
 `src/services/session/__tests__/sessionSlice.test.ts`:
 
@@ -2217,11 +2222,11 @@ const initial: SessionState = {
 };
 
 describe('sessionSlice', () => {
-  it('arranca en bootstrapping', () => {
+  it('starts in bootstrapping', () => {
     expect(sessionReducer(undefined, {type: '@@INIT'})).toEqual(initial);
   });
 
-  it('pasa a signedIn al restaurar una sesión', () => {
+  it('moves to signedIn when restoring a session', () => {
     const state = sessionReducer(
       initial,
       sessionRestored({accessToken: 'tok', user: USER}),
@@ -2229,14 +2234,15 @@ describe('sessionSlice', () => {
     expect(state).toEqual({status: 'signedIn', accessToken: 'tok', user: USER});
   });
 
-  it('pasa a signedOut cuando no hay sesión guardada', () => {
+  it('moves to signedOut when there is no saved session', () => {
     expect(sessionReducer(initial, sessionMissing()).status).toBe('signedOut');
   });
 
-  it('pasa a signedIn cuando el login se resuelve', () => {
-    // `matchFulfilled` es un predicado, no un action creator: su `toString()`
-    // devuelve el código de la función, no el tipo. Se usa el tipo literal que
-    // RTK Query emite para una mutación bajo `reducerPath: 'api'`.
+  it('moves to signedIn when the login resolves', () => {
+    // `matchFulfilled` is a predicate, not an action creator: its
+    // `toString()` returns the function's code, not the type. The literal
+    // type that RTK Query emits for a mutation under `reducerPath: 'api'`
+    // is used instead.
     const action = {
       type: 'api/executeMutation/fulfilled',
       payload: {accessToken: 'tok', user: USER},
@@ -2251,7 +2257,7 @@ describe('sessionSlice', () => {
     expect(state.accessToken).toBe('tok');
   });
 
-  it('limpia token y usuario en signedOut', () => {
+  it('clears the token and user on signedOut', () => {
     const signedIn: SessionState = {
       status: 'signedIn',
       accessToken: 'tok',
@@ -2264,7 +2270,7 @@ describe('sessionSlice', () => {
     });
   });
 
-  it('limpia la sesión cuando la API responde 401', () => {
+  it('clears the session when the API responds 401', () => {
     const signedIn: SessionState = {
       status: 'signedIn',
       accessToken: 'tok',
@@ -2279,7 +2285,7 @@ describe('sessionSlice', () => {
 });
 
 describe('restoreSession', () => {
-  it('restaura la sesión guardada', async () => {
+  it('restores the saved session', async () => {
     const storage = createMemoryStorage();
     await storage.setItem(STORAGE_KEYS.accessToken, 'tok');
     await storage.setItem(STORAGE_KEYS.user, JSON.stringify(USER));
@@ -2302,7 +2308,7 @@ describe('restoreSession', () => {
     expect(dispatched).toContain(sessionRestored.type);
   });
 
-  it('marca la sesión como ausente cuando no hay token', async () => {
+  it('marks the session as missing when there is no token', async () => {
     const storage = createMemoryStorage();
     const dispatched: string[] = [];
     const thunk = restoreSession({storage});
@@ -2324,12 +2330,12 @@ describe('restoreSession', () => {
 });
 ```
 
-- [ ] **Step 2: Correr el test y verificar que falla**
+- [ ] **Step 2: Run the test and verify it fails**
 
 Run: `npx jest src/services/session --no-coverage`
 Expected: FAIL — `Cannot find module '../sessionApi'`.
 
-- [ ] **Step 3: Escribir `sessionApi`**
+- [ ] **Step 3: Write `sessionApi`**
 
 `src/services/session/sessionApi.ts`:
 
@@ -2352,7 +2358,7 @@ export const sessionApi = baseApi.injectEndpoints({
 export const {useLoginMutation, useMeQuery} = sessionApi;
 ```
 
-- [ ] **Step 4: Escribir `sessionSlice`**
+- [ ] **Step 4: Write `sessionSlice`**
 
 `src/services/session/sessionSlice.ts`:
 
@@ -2402,12 +2408,12 @@ const sessionSlice = createSlice({
     signedOut: clear,
   },
   extraReducers: builder => {
-    // RTK exige que todos los `addCase` precedan a cualquier `addMatcher`:
-    // invertir el orden lanza en runtime al construir el slice.
+    // RTK requires every `addCase` to precede any `addMatcher`: reversing
+    // the order throws at runtime while building the slice.
     builder
       .addCase(unauthorized, clear)
-      // El login exitoso no necesita una acción propia: el slice reacciona al
-      // resultado de la mutación de RTK Query. Una sola fuente de verdad.
+      // A successful login doesn't need its own action: the slice reacts to
+      // the RTK Query mutation's result. A single source of truth.
       .addMatcher(
         sessionApi.endpoints.login.matchFulfilled,
         (state, action) => {
@@ -2424,9 +2430,10 @@ export const {sessionMissing, sessionRestored, signedOut} =
 export default sessionSlice.reducer;
 
 /**
- * Bootstrap de sesión. `storage` se inyecta para poder testearlo sin AsyncStorage.
- * Se escribe como thunk a mano (no createAsyncThunk) porque no hay estados
- * pending/rejected que interesen: o hay sesión o no la hay.
+ * Session bootstrap. `storage` is injected so it can be tested without
+ * AsyncStorage. It's written as a hand-rolled thunk (not createAsyncThunk)
+ * because there are no pending/rejected states worth caring about: either
+ * there's a session or there isn't.
  */
 export function restoreSession({
   storage = defaultStorage,
@@ -2455,7 +2462,7 @@ export function restoreSession({
   };
 }
 
-/** Logout: limpia el slice, el storage y **todo** el cache de RTK Query. */
+/** Logout: clears the slice, storage, and **the entire** RTK Query cache. */
 export function signOut({storage = defaultStorage}: {storage?: Storage} = {}) {
   return async (dispatch: (action: unknown) => unknown): Promise<void> => {
     await Promise.all([
@@ -2468,12 +2475,12 @@ export function signOut({storage = defaultStorage}: {storage?: Storage} = {}) {
 }
 ```
 
-- [ ] **Step 5: Correr el test y verificar que pasa**
+- [ ] **Step 5: Run the test and verify it passes**
 
 Run: `npx jest src/services/session --no-coverage`
 Expected: PASS, 8 tests.
 
-- [ ] **Step 6: Escribir los listeners de persistencia**
+- [ ] **Step 6: Write the persistence listeners**
 
 `src/services/session/sessionListeners.ts`:
 
@@ -2487,9 +2494,8 @@ import {sessionApi} from './sessionApi';
 import {signedOut} from './sessionSlice';
 
 /**
- * La persistencia vive en un listener y no dentro del reducer: los reducers
- * tienen que ser puros y síncronos, y escribir en AsyncStorage no es ninguna de
- * las dos cosas.
+ * Persistence lives in a listener and not inside the reducer: reducers must
+ * be pure and synchronous, and writing to AsyncStorage is neither.
  */
 export function registerSessionListeners(
   startAppListening: AppStartListening,
@@ -2516,17 +2522,17 @@ export function registerSessionListeners(
 }
 ```
 
-- [ ] **Step 7: Montar el reducer y los listeners en el store**
+- [ ] **Step 7: Mount the reducer and the listeners on the store**
 
-En `src/app/store.ts`, agregar `import {registerSessionListeners, sessionReducer} from '@/services/session';`, sumar `session: sessionReducer` a `rootReducer`, y al final del archivo:
+In `src/app/store.ts`, add `import {registerSessionListeners, sessionReducer} from '@/services/session';`, add `session: sessionReducer` to `rootReducer`, and at the end of the file:
 
 ```ts
 registerSessionListeners(startAppListening);
 ```
 
-importando `startAppListening` desde `./listenerMiddleware`. El registro se hace una sola vez a nivel de módulo, no por store: `startAppListening` está atado al middleware, que es compartido.
+importing `startAppListening` from `./listenerMiddleware`. Registration happens once at module level, not per store: `startAppListening` is tied to the middleware, which is shared.
 
-- [ ] **Step 8: Escribir el hook `useSession`**
+- [ ] **Step 8: Write the `useSession` hook**
 
 `src/services/session/useSession.ts`:
 
@@ -2557,7 +2563,7 @@ export function useSession() {
 }
 ```
 
-- [ ] **Step 9: Escribir el barril del módulo**
+- [ ] **Step 9: Write the module barrel**
 
 `src/services/session/index.ts`:
 
@@ -2576,9 +2582,9 @@ export {registerSessionListeners} from './sessionListeners';
 export {useSession} from './useSession';
 ```
 
-- [ ] **Step 10: Traer los dos casos diferidos al test del baseApi**
+- [ ] **Step 10: Bring the two deferred cases into the baseApi test**
 
-Agregar a `src/services/api/__tests__/baseApi.test.ts` los dos casos que la Task 5 dejó pendientes, que ahora compilan porque el slice `session` existe:
+Add to `src/services/api/__tests__/baseApi.test.ts` the two cases Task 5 left pending, which now compile because the `session` slice exists:
 
 ```ts
 import {ACCESS_TOKEN} from '@/mocks/handlers';
@@ -2593,7 +2599,7 @@ const probeApi = baseApi.injectEndpoints({
 });
 
 describe('baseApi', () => {
-  it('inyecta el Authorization header desde el store', async () => {
+  it('injects the Authorization header from the store', async () => {
     const store = makeStore({
       session: {status: 'signedIn', accessToken: ACCESS_TOKEN, user: null},
     });
@@ -2601,29 +2607,29 @@ describe('baseApi', () => {
     expect(result.data).toBeDefined();
   });
 
-  it('limpia la sesión cuando la respuesta es 401', async () => {
+  it('clears the session when the response is 401', async () => {
     const store = makeStore({
       session: {status: 'signedIn', accessToken: 'token-invalido', user: null},
     });
     await store.dispatch(probeApi.endpoints.probeMe.initiate());
-    // `unauthorized` lo despacha el wrapper del baseQuery; el slice lo escucha.
+    // `unauthorized` is dispatched by the baseQuery wrapper; the slice listens for it.
     expect(store.getState().session.status).toBe('signedOut');
     expect(unauthorized.type).toBe('session/unauthorized');
   });
 });
 ```
 
-- [ ] **Step 11: Correr los tests y verificar que pasan**
+- [ ] **Step 11: Run the tests and verify they pass**
 
 Run: `npx jest src/services/session src/services/api --no-coverage`
 Expected: PASS, 12 tests.
 
-- [ ] **Step 12: Verificación completa y commit**
+- [ ] **Step 12: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: sesión con slice, RTK Query y persistencia por listener"
+git commit -m "feat: session with slice, RTK Query, and listener-based persistence"
 ```
 
 ---
@@ -2637,10 +2643,10 @@ git commit -m "feat: sesión con slice, RTK Query y persistencia por listener"
 
 **Interfaces:**
 
-- Consumes: `useSession` de `@/services/session`; `Button`, `Screen`, `TextField` de `@/components/ui`; `DEMO_PASSWORD`, `DEMO_USER` de `@/mocks/db` (solo bajo `__DEV__`).
-- Produces: `<LoginScreen />` — sin props. testIDs: `login-email`, `login-password`, `login-submit`, `login-error`.
+- Consumes: `useSession` from `@/services/session`; `Button`, `Screen`, `TextField` from `@/components/ui`; `DEMO_PASSWORD`, `DEMO_USER` from `@/mocks/db` (only under `__DEV__`).
+- Produces: `<LoginScreen />` — no props. testIDs: `login-email`, `login-password`, `login-submit`, `login-error`.
 
-- [ ] **Step 1: Escribir el test que falla**
+- [ ] **Step 1: Write the failing test**
 
 `src/features/auth/__tests__/LoginScreen.test.tsx`:
 
@@ -2662,21 +2668,21 @@ function fillAndSubmit(email: string, password: string) {
 }
 
 describe('LoginScreen', () => {
-  it('muestra un error de formato cuando el email es inválido', async () => {
+  it('shows a format error when the email is invalid', async () => {
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('no-es-un-email', 'password123');
-    expect(await screen.findByText('Ingresá un email válido')).toBeVisible();
+    expect(await screen.findByText('Enter a valid email')).toBeVisible();
   });
 
-  it('muestra un error cuando la contraseña es muy corta', async () => {
+  it('shows an error when the password is too short', async () => {
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', '123');
     expect(
-      await screen.findByText('La contraseña debe tener al menos 8 caracteres'),
+      await screen.findByText('Password must be at least 8 characters'),
     ).toBeVisible();
   });
 
-  it('deja el estado en signedIn tras un login exitoso', async () => {
+  it('leaves the state at signedIn after a successful login', async () => {
     const {store} = renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', 'password123');
     await waitFor(() =>
@@ -2685,33 +2691,33 @@ describe('LoginScreen', () => {
     expect(store.getState().session.accessToken).toBe('demo-access-token');
   });
 
-  it('muestra un mensaje de credenciales inválidas ante un 401', async () => {
+  it('shows an invalid credentials message on a 401', async () => {
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', 'incorrecta1');
     expect(await screen.findByTestId('login-error')).toHaveTextContent(
-      'Email o contraseña incorrectos',
+      'Incorrect email or password',
     );
   });
 
-  it('diferencia el error de red del error de credenciales', async () => {
+  it('distinguishes the network error from the credentials error', async () => {
     server.use(
       http.post(`${API_BASE_URL}/auth/login`, () => HttpResponse.error()),
     );
     renderWithProviders(<LoginScreen />);
     fillAndSubmit('demo@catalog.dev', 'password123');
     expect(await screen.findByTestId('login-error')).toHaveTextContent(
-      'No pudimos conectarnos. Revisá tu conexión e intentá de nuevo',
+      "We couldn't connect. Check your connection and try again",
     );
   });
 });
 ```
 
-- [ ] **Step 2: Correr el test y verificar que falla**
+- [ ] **Step 2: Run the test and verify it fails**
 
 Run: `npx jest src/features/auth/__tests__/LoginScreen --no-coverage`
 Expected: FAIL — `Cannot find module '../screens/LoginScreen'`.
 
-- [ ] **Step 3: Implementar `LoginScreen`**
+- [ ] **Step 3: Implement `LoginScreen`**
 
 `src/features/auth/screens/LoginScreen.tsx`:
 
@@ -2736,19 +2742,19 @@ interface FieldErrors {
 function validate(email: string, password: string): FieldErrors {
   const errors: FieldErrors = {};
   if (!EMAIL_PATTERN.test(email.trim())) {
-    errors.email = 'Ingresá un email válido';
+    errors.email = 'Enter a valid email';
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
-    errors.password = `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`;
+    errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
   }
   return errors;
 }
 
 /**
- * El error de red y el de credenciales se distinguen por la forma del error de
- * fetchBaseQuery: un 401 trae `status: 401`; una caída de red trae
- * `status: 'FETCH_ERROR'`. Mostrar "credenciales inválidas" ante un problema de
- * red es uno de los bugs de UX más comunes en apps móviles.
+ * The network error and the credentials error are distinguished by the shape
+ * of fetchBaseQuery's error: a 401 carries `status: 401`; a network failure
+ * carries `status: 'FETCH_ERROR'`. Showing "invalid credentials" for a
+ * network problem is one of the most common UX bugs in mobile apps.
  */
 function messageFor(error: unknown): string | null {
   if (error == null || typeof error !== 'object' || !('status' in error)) {
@@ -2756,9 +2762,9 @@ function messageFor(error: unknown): string | null {
   }
   const {status} = error as {status: unknown};
   if (status === 401) {
-    return 'Email o contraseña incorrectos';
+    return 'Incorrect email or password';
   }
-  return 'No pudimos conectarnos. Revisá tu conexión e intentá de nuevo';
+  return "We couldn't connect. Check your connection and try again";
 }
 
 export function LoginScreen() {
@@ -2773,8 +2779,8 @@ export function LoginScreen() {
     if (Object.keys(errors).length > 0) {
       return;
     }
-    // El estado de sesión lo actualiza sessionSlice al resolverse la mutación; acá
-    // solo se ignora el rechazo, que ya se refleja en `error`.
+    // Session state is updated by sessionSlice when the mutation resolves;
+    // here we just ignore the rejection, which is already reflected in `error`.
     signIn(email.trim(), password).catch(() => {});
   }, [email, password, signIn]);
 
@@ -2783,7 +2789,7 @@ export function LoginScreen() {
   return (
     <Screen scroll>
       <View style={styles.form}>
-        <Text style={styles.title}>Catálogo</Text>
+        <Text style={styles.title}>Catalog</Text>
 
         <TextField
           testID="login-email"
@@ -2799,7 +2805,7 @@ export function LoginScreen() {
 
         <TextField
           testID="login-password"
-          label="Contraseña"
+          label="Password"
           value={password}
           onChangeText={setPassword}
           error={fieldErrors.password}
@@ -2815,7 +2821,7 @@ export function LoginScreen() {
 
         <Button
           testID="login-submit"
-          label="Ingresar"
+          label="Sign in"
           onPress={onSubmit}
           loading={isSigningIn}
         />
@@ -2838,22 +2844,22 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 4: Correr el test y verificar que pasa**
+- [ ] **Step 4: Run the test and verify it passes**
 
 Run: `npx jest src/features/auth/__tests__/LoginScreen --no-coverage`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 5: Verificación completa y commit**
+- [ ] **Step 5: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: pantalla de login con validación y errores diferenciados"
+git commit -m "feat: login screen with validation and distinct error states"
 ```
 
 ---
 
-## Task 9: Navegación y bootstrap de sesión
+## Task 9: Navigation and session bootstrap
 
 **Files:**
 
@@ -2867,29 +2873,29 @@ git commit -m "feat: pantalla de login con validación y errores diferenciados"
 - Create: `src/features/favorites/screens/FavoritesScreen.tsx` (placeholder)
 - Create: `src/features/profile/screens/ProfileScreen.tsx` (placeholder)
 - Modify: `src/app/App.tsx`
-- Modify: `src/test/renderWithProviders.tsx` (envolver en `NavigationContainer`)
+- Modify: `src/test/renderWithProviders.tsx` (wrap in `NavigationContainer`)
 - Test: `src/navigation/__tests__/RootNavigator.test.tsx`
 
 **Interfaces:**
 
-- Consumes: `useAppDispatch`, `useAppSelector`; `restoreSession` de `@/services/session`; `LoginScreen`.
-- Produces desde `@/navigation/types`:
+- Consumes: `useAppDispatch`, `useAppSelector`; `restoreSession` from `@/services/session`; `LoginScreen`.
+- Produces from `@/navigation/types`:
   - `AuthStackParamList = {Login: undefined}`
   - `CatalogStackParamList = {ProductList: undefined; ProductDetail: {productId: string}}`
   - `AppTabParamList = {CatalogTab: NavigatorScreenParams<CatalogStackParamList>; FavoritesTab: undefined; ProfileTab: undefined}`
   - `RootStackParamList = {Auth: NavigatorScreenParams<AuthStackParamList>; App: NavigatorScreenParams<AppTabParamList>}`
   - `ProductListScreenProps`, `ProductDetailScreenProps` (`NativeStackScreenProps<CatalogStackParamList, ...>`)
-  - declaración global de `ReactNavigation.RootParamList`
-- Produces: `<RootNavigator />` sin props.
+  - global declaration of `ReactNavigation.RootParamList`
+- Produces: `<RootNavigator />` with no props.
 
-- [ ] **Step 1: Instalar React Navigation**
+- [ ] **Step 1: Install React Navigation**
 
 ```bash
 npm install @react-navigation/native@7 @react-navigation/native-stack@7 @react-navigation/bottom-tabs@7 react-native-screens
 cd ios && pod install && cd ..
 ```
 
-- [ ] **Step 2: Escribir los tipos de navegación**
+- [ ] **Step 2: Write the navigation types**
 
 `src/navigation/types.ts`:
 
@@ -2932,9 +2938,9 @@ export type FavoritesScreenProps = BottomTabScreenProps<
 >;
 
 /**
- * Registrar el ParamList raíz a nivel global hace que `navigation.navigate()`
- * y `useNavigation()` sean type-safe en toda la app sin importar tipos en cada
- * archivo. El costo es que solo puede haber un ParamList raíz por app.
+ * Registering the root ParamList globally makes `navigation.navigate()` and
+ * `useNavigation()` type-safe throughout the app without importing types in
+ * every file. The cost is that there can only be one root ParamList per app.
  */
 declare global {
   namespace ReactNavigation {
@@ -2943,9 +2949,9 @@ declare global {
 }
 ```
 
-- [ ] **Step 3: Escribir las pantallas placeholder**
+- [ ] **Step 3: Write the placeholder screens**
 
-Las cuatro con la misma forma; se reemplazan en las tasks 12–15. Ejemplo para `src/features/catalog/screens/ProductListScreen.tsx`:
+The four with the same shape; they get replaced in Tasks 12–15. Example for `src/features/catalog/screens/ProductListScreen.tsx`:
 
 ```tsx
 import React from 'react';
@@ -2956,15 +2962,15 @@ import {Screen} from '@/components/ui';
 export function ProductListScreen() {
   return (
     <Screen>
-      <Text>Catálogo</Text>
+      <Text>Catalog</Text>
     </Screen>
   );
 }
 ```
 
-Repetir con `ProductDetailScreen` (texto `Detalle`), `FavoritesScreen` (texto `Favoritos`) y `ProfileScreen` (texto `Perfil`), cada una en la ruta indicada en **Files**.
+Repeat with `ProductDetailScreen` (text `Details`), `FavoritesScreen` (text `Favorites`), and `ProfileScreen` (text `Profile`), each at the path listed in **Files**.
 
-- [ ] **Step 4: Escribir los navegadores**
+- [ ] **Step 4: Write the navigators**
 
 `src/navigation/AuthNavigator.tsx`:
 
@@ -3006,12 +3012,12 @@ export function CatalogStack() {
       <Stack.Screen
         name="ProductList"
         component={ProductListScreen}
-        options={{title: 'Catálogo'}}
+        options={{title: 'Catalog'}}
       />
       <Stack.Screen
         name="ProductDetail"
         component={ProductDetailScreen}
-        options={{title: 'Detalle'}}
+        options={{title: 'Details'}}
       />
     </Stack.Navigator>
   );
@@ -3039,24 +3045,24 @@ export function AppTabs() {
       <Tab.Screen
         name="CatalogTab"
         component={CatalogStack}
-        options={{title: 'Catálogo', headerShown: false}}
+        options={{title: 'Catalog', headerShown: false}}
       />
       <Tab.Screen
         name="FavoritesTab"
         component={FavoritesScreen}
-        options={{title: 'Favoritos'}}
+        options={{title: 'Favorites'}}
       />
       <Tab.Screen
         name="ProfileTab"
         component={ProfileScreen}
-        options={{title: 'Perfil'}}
+        options={{title: 'Profile'}}
       />
     </Tab.Navigator>
   );
 }
 ```
 
-- [ ] **Step 5: Escribir el `RootNavigator` con bootstrap**
+- [ ] **Step 5: Write the `RootNavigator` with bootstrap**
 
 `src/navigation/RootNavigator.tsx`:
 
@@ -3083,8 +3089,9 @@ export function RootNavigator() {
     void dispatch(restoreSession());
   }, [dispatch]);
 
-  // Splash mientras se lee el storage: montar el navegador antes de saber si hay
-  // sesión provocaría un flash de la pantalla de login en cada arranque.
+  // Splash while storage is being read: mounting the navigator before
+  // knowing whether there's a session would cause a flash of the login
+  // screen on every launch.
   if (status === 'bootstrapping') {
     return (
       <View testID="splash" style={styles.splash}>
@@ -3114,9 +3121,9 @@ const styles = StyleSheet.create({
 });
 ```
 
-> Los dos grupos de pantallas son excluyentes por condicional en vez de por `navigate`: así no hay forma de volver al login con el gesto de atrás estando logueado, y el stack de auth se desmonta entero al entrar.
+> The two screen groups are mutually exclusive by conditional instead of by `navigate`: this way there's no way to get back to login with the back gesture while logged in, and the auth stack unmounts entirely on entry.
 
-- [ ] **Step 6: Componer `App.tsx`**
+- [ ] **Step 6: Compose `App.tsx`**
 
 `src/app/App.tsx`:
 
@@ -3145,9 +3152,9 @@ export default function App() {
 }
 ```
 
-- [ ] **Step 7: Envolver el helper de tests en `NavigationContainer`**
+- [ ] **Step 7: Wrap the test helper in `NavigationContainer`**
 
-En `src/test/renderWithProviders.tsx`, cambiar el `Wrapper` por:
+In `src/test/renderWithProviders.tsx`, change the `Wrapper` to:
 
 ```tsx
 import {NavigationContainer} from '@react-navigation/native';
@@ -3161,7 +3168,7 @@ function Wrapper({children}: PropsWithChildren) {
 }
 ```
 
-- [ ] **Step 8: Escribir el test del `RootNavigator`**
+- [ ] **Step 8: Write the `RootNavigator` test**
 
 `src/navigation/__tests__/RootNavigator.test.tsx`:
 
@@ -3180,17 +3187,17 @@ describe('RootNavigator', () => {
     await storage.removeItem(STORAGE_KEYS.user);
   });
 
-  it('muestra el splash antes de resolver el bootstrap', () => {
+  it('shows the splash screen before the bootstrap resolves', () => {
     renderWithProviders(<RootNavigator />);
     expect(screen.getByTestId('splash')).toBeVisible();
   });
 
-  it('lleva al login cuando no hay sesión guardada', async () => {
+  it('goes to login when there is no saved session', async () => {
     renderWithProviders(<RootNavigator />);
     expect(await screen.findByTestId('login-submit')).toBeVisible();
   });
 
-  it('entra directo a la app cuando hay sesión guardada', async () => {
+  it('enters the app directly when there is a saved session', async () => {
     await storage.setItem(STORAGE_KEYS.accessToken, 'demo-access-token');
     await storage.setItem(
       STORAGE_KEYS.user,
@@ -3198,17 +3205,17 @@ describe('RootNavigator', () => {
     );
 
     renderWithProviders(<RootNavigator />);
-    await waitFor(() => expect(screen.getByText('Catálogo')).toBeVisible());
+    await waitFor(() => expect(screen.getByText('Catalog')).toBeVisible());
   });
 });
 ```
 
-- [ ] **Step 9: Correr los tests**
+- [ ] **Step 9: Run the tests**
 
 Run: `npx jest src/navigation --no-coverage`
 Expected: PASS, 3 tests.
 
-**Si falla con errores de `react-native-screens`:** agregar a `src/test/setup.ts`:
+**If it fails with `react-native-screens` errors:** add to `src/test/setup.ts`:
 
 ```ts
 jest.mock('react-native-screens', () => {
@@ -3217,22 +3224,22 @@ jest.mock('react-native-screens', () => {
 });
 ```
 
-- [ ] **Step 10: Verificar en el simulador**
+- [ ] **Step 10: Verify on the simulator**
 
 Run: `npm run ios`
-Expected: arranca en splash, cae al login, y tras ingresar con las credenciales de demo aparecen los tabs.
+Expected: it launches into the splash screen, falls through to login, and after signing in with the demo credentials the tabs appear.
 
-- [ ] **Step 11: Verificación completa y commit**
+- [ ] **Step 11: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: navegación tipada con bootstrap de sesión y tabs"
+git commit -m "feat: typed navigation with session bootstrap and tabs"
 ```
 
 ---
 
-## Task 10: Feature catalog — api, slice y selectors
+## Task 10: Catalog feature — api, slice, and selectors
 
 **Files:**
 
@@ -3240,7 +3247,7 @@ git commit -m "feat: navegación tipada con bootstrap de sesión y tabs"
 - Create: `src/services/api/productsApi.ts`
 - Create: `src/features/catalog/catalogSlice.ts`
 - Create: `src/features/catalog/selectors.ts`
-- Modify: `src/app/store.ts` (montar el reducer `catalog`)
+- Modify: `src/app/store.ts` (mount the `catalog` reducer)
 - Test: `src/features/catalog/__tests__/catalogSlice.test.ts`
 - Test: `src/features/catalog/__tests__/selectors.test.ts`
 - Test: `src/features/catalog/__tests__/catalogApi.test.ts`
@@ -3251,14 +3258,14 @@ git commit -m "feat: navegación tipada con bootstrap de sesión y tabs"
 - Consumes: `baseApi`; `PAGE_SIZE`; `Product`, `ProductsPage`, `ProductsQueryArgs`, `Category`, `SortOption`; `RootState`.
 - Produces:
 
-  - `catalogApi` con `useGetProductsInfiniteQuery(args: ProductsQueryArgs)`
-  - `productsApi` con `useGetProductQuery(id: string)` desde `@/services/api/productsApi`
-  - `catalogReducer` (default), acciones `queryChanged(string)`, `categoryChanged(Category | 'all')`, `sortChanged(SortOption)`, `filtersReset()`
+  - `catalogApi` with `useGetProductsInfiniteQuery(args: ProductsQueryArgs)`
+  - `productsApi` with `useGetProductQuery(id: string)` from `@/services/api/productsApi`
+  - `catalogReducer` (default), actions `queryChanged(string)`, `categoryChanged(Category | 'all')`, `sortChanged(SortOption)`, `filtersReset()`
   - `CatalogState = {query: string; category: Category | 'all'; sort: SortOption}`
-  - `selectProductsQueryArgs(state): ProductsQueryArgs` (memoizado con `createSelector`)
+  - `selectProductsQueryArgs(state): ProductsQueryArgs` (memoized with `createSelector`)
   - `selectHasActiveFilters(state): boolean`
 
-- [ ] **Step 1: Escribir el test que falla del slice**
+- [ ] **Step 1: Write the failing slice test**
 
 `src/features/catalog/__tests__/catalogSlice.test.ts`:
 
@@ -3274,29 +3281,29 @@ import type {CatalogState} from '../catalogSlice';
 const initial: CatalogState = {query: '', category: 'all', sort: 'name'};
 
 describe('catalogSlice', () => {
-  it('tiene filtros vacíos por defecto', () => {
+  it('has empty filters by default', () => {
     expect(catalogReducer(undefined, {type: '@@INIT'})).toEqual(initial);
   });
 
-  it('actualiza la query', () => {
+  it('updates the query', () => {
     expect(catalogReducer(initial, queryChanged('nimbus')).query).toBe(
       'nimbus',
     );
   });
 
-  it('actualiza la categoría', () => {
+  it('updates the category', () => {
     expect(catalogReducer(initial, categoryChanged('audio')).category).toBe(
       'audio',
     );
   });
 
-  it('actualiza el orden', () => {
+  it('updates the sort', () => {
     expect(catalogReducer(initial, sortChanged('price_desc')).sort).toBe(
       'price_desc',
     );
   });
 
-  it('resetea todos los filtros', () => {
+  it('resets all filters', () => {
     const dirty: CatalogState = {
       query: 'x',
       category: 'gaming',
@@ -3307,12 +3314,12 @@ describe('catalogSlice', () => {
 });
 ```
 
-- [ ] **Step 2: Correr y verificar que falla**
+- [ ] **Step 2: Run and verify it fails**
 
 Run: `npx jest src/features/catalog --no-coverage`
 Expected: FAIL — `Cannot find module '../catalogSlice'`.
 
-- [ ] **Step 3: Implementar el slice**
+- [ ] **Step 3: Implement the slice**
 
 `src/features/catalog/catalogSlice.ts`:
 
@@ -3323,8 +3330,8 @@ import type {PayloadAction} from '@reduxjs/toolkit';
 import type {Category, SortOption} from '@/services/api/types';
 
 /**
- * Solo estado de cliente. Los productos son estado de servidor y viven en el
- * cache de RTK Query: duplicarlos acá sería tener dos fuentes de verdad.
+ * Client state only. Products are server state and live in the RTK Query
+ * cache: duplicating them here would mean two sources of truth.
  */
 export interface CatalogState {
   query: string;
@@ -3362,16 +3369,16 @@ export const {categoryChanged, filtersReset, queryChanged, sortChanged} =
 export default catalogSlice.reducer;
 ```
 
-- [ ] **Step 4: Montar el reducer en el store**
+- [ ] **Step 4: Mount the reducer on the store**
 
-En `src/app/store.ts`: `import catalogReducer from '@/features/catalog/catalogSlice';` y agregar `catalog: catalogReducer` a `rootReducer`.
+In `src/app/store.ts`: `import catalogReducer from '@/features/catalog/catalogSlice';` and add `catalog: catalogReducer` to `rootReducer`.
 
-- [ ] **Step 5: Correr el test del slice**
+- [ ] **Step 5: Run the slice test**
 
 Run: `npx jest src/features/catalog/__tests__/catalogSlice --no-coverage`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 6: Escribir el test que falla de los selectors**
+- [ ] **Step 6: Write the failing selectors test**
 
 `src/features/catalog/__tests__/selectors.test.ts`:
 
@@ -3382,21 +3389,21 @@ import {categoryChanged, queryChanged} from '../catalogSlice';
 import {selectHasActiveFilters, selectProductsQueryArgs} from '../selectors';
 
 describe('selectProductsQueryArgs', () => {
-  it('devuelve la misma referencia si el estado relevante no cambió', () => {
+  it('returns the same reference if the relevant state has not changed', () => {
     const store = makeStore();
     const first = selectProductsQueryArgs(store.getState());
     const second = selectProductsQueryArgs(store.getState());
     expect(second).toBe(first);
   });
 
-  it('sigue devolviendo la misma referencia tras un dispatch que no toca el catálogo', () => {
+  it('keeps returning the same reference after a dispatch that does not touch the catalog', () => {
     const store = makeStore();
     const first = selectProductsQueryArgs(store.getState());
     store.dispatch({type: 'ruido/irrelevante'});
     expect(selectProductsQueryArgs(store.getState())).toBe(first);
   });
 
-  it('devuelve una referencia nueva cuando cambia un filtro', () => {
+  it('returns a new reference when a filter changes', () => {
     const store = makeStore();
     const first = selectProductsQueryArgs(store.getState());
     store.dispatch(categoryChanged('audio'));
@@ -3407,11 +3414,11 @@ describe('selectProductsQueryArgs', () => {
 });
 
 describe('selectHasActiveFilters', () => {
-  it('es falso con los filtros por defecto', () => {
+  it('is false with the default filters', () => {
     expect(selectHasActiveFilters(makeStore().getState())).toBe(false);
   });
 
-  it('es verdadero cuando hay una búsqueda', () => {
+  it('is true when there is a search', () => {
     const store = makeStore();
     store.dispatch(queryChanged('nimbus'));
     expect(selectHasActiveFilters(store.getState())).toBe(true);
@@ -3419,14 +3426,14 @@ describe('selectHasActiveFilters', () => {
 });
 ```
 
-> El segundo caso es el que da valor: sin `createSelector`, un selector que arma `{q, category, sort}` inline devolvería un objeto nuevo en **cada** dispatch de la app y re-renderizaría la lista aunque nada del catálogo hubiera cambiado.
+> The second case is the one that gives it value: without `createSelector`, an inline selector that builds `{q, category, sort}` would return a new object on **every** dispatch in the app and would re-render the list even when nothing about the catalog had changed.
 
-- [ ] **Step 7: Correr y verificar que falla**
+- [ ] **Step 7: Run and verify it fails**
 
 Run: `npx jest src/features/catalog/__tests__/selectors --no-coverage`
 Expected: FAIL — `Cannot find module '../selectors'`.
 
-- [ ] **Step 8: Implementar los selectors**
+- [ ] **Step 8: Implement the selectors**
 
 `src/features/catalog/selectors.ts`:
 
@@ -3439,10 +3446,10 @@ import type {ProductsQueryArgs} from '@/services/api/types';
 const selectCatalog = (state: RootState) => state.catalog;
 
 /**
- * Nivel 2 de la demo de memoización (spec §5): memoización fuera de React.
- * Este selector arma un objeto nuevo; sin createSelector la identidad cambiaría
- * en cada llamada y `useGetProductsInfiniteQuery(args)` re-suscribiría el hook
- * en cada render.
+ * Level 2 of the memoization demo (spec §5): memoization outside of React.
+ * This selector builds a new object; without createSelector the identity
+ * would change on every call and `useGetProductsInfiniteQuery(args)` would
+ * re-subscribe the hook on every render.
  */
 export const selectProductsQueryArgs = createSelector(
   [selectCatalog],
@@ -3462,12 +3469,12 @@ export const selectHasActiveFilters = createSelector(
 );
 ```
 
-- [ ] **Step 9: Correr el test de selectors**
+- [ ] **Step 9: Run the selectors test**
 
 Run: `npx jest src/features/catalog/__tests__/selectors --no-coverage`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 10: Escribir el test que falla de la infiniteQuery**
+- [ ] **Step 10: Write the failing infiniteQuery test**
 
 `src/features/catalog/__tests__/catalogApi.test.ts`:
 
@@ -3480,7 +3487,7 @@ import {catalogApi} from '../catalogApi';
 const ARGS: ProductsQueryArgs = {q: '', category: 'all', sort: 'name'};
 
 describe('catalogApi', () => {
-  it('trae la primera página', async () => {
+  it('fetches the first page', async () => {
     const store = makeStore();
     const result = await store.dispatch(
       catalogApi.endpoints.getProducts.initiate(ARGS),
@@ -3489,7 +3496,7 @@ describe('catalogApi', () => {
     expect(result.data?.pages[0]?.items).toHaveLength(10);
   });
 
-  it('acumula páginas al pedir la siguiente', async () => {
+  it('accumulates pages when requesting the next one', async () => {
     const store = makeStore();
     await store.dispatch(catalogApi.endpoints.getProducts.initiate(ARGS));
     const result = await store.dispatch(
@@ -3501,7 +3508,7 @@ describe('catalogApi', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('cachea las páginas por combinación de filtros', async () => {
+  it('caches pages per filter combination', async () => {
     const store = makeStore();
     await store.dispatch(catalogApi.endpoints.getProducts.initiate(ARGS));
     await store.dispatch(
@@ -3515,12 +3522,12 @@ describe('catalogApi', () => {
 });
 ```
 
-- [ ] **Step 11: Correr y verificar que falla**
+- [ ] **Step 11: Run and verify it fails**
 
 Run: `npx jest src/features/catalog/__tests__/catalogApi --no-coverage`
 Expected: FAIL — `Cannot find module '../catalogApi'`.
 
-- [ ] **Step 12: Implementar `catalogApi`**
+- [ ] **Step 12: Implement `catalogApi`**
 
 `src/features/catalog/catalogApi.ts`:
 
@@ -3529,7 +3536,7 @@ import {PAGE_SIZE} from '@/services/api/config';
 import {baseApi} from '@/services/api/baseApi';
 import type {ProductsPage, ProductsQueryArgs} from '@/services/api/types';
 
-/** El cursor es el id del último producto de la página anterior; `null` = primera. */
+/** The cursor is the id of the last product on the previous page; `null` = first. */
 type PageParam = string | null;
 
 export const catalogApi = baseApi.injectEndpoints({
@@ -3541,7 +3548,7 @@ export const catalogApi = baseApi.injectEndpoints({
     >({
       infiniteQueryOptions: {
         initialPageParam: null,
-        // Devolver `undefined` corta el paginado: es lo que apaga `hasNextPage`.
+        // Returning `undefined` cuts off pagination: it's what turns off `hasNextPage`.
         getNextPageParam: lastPage => lastPage.nextCursor ?? undefined,
       },
       query: ({queryArg, pageParam}) => ({
@@ -3562,12 +3569,12 @@ export const catalogApi = baseApi.injectEndpoints({
 export const {useGetProductsInfiniteQuery} = catalogApi;
 ```
 
-- [ ] **Step 13: Correr el test de la api**
+- [ ] **Step 13: Run the api test**
 
 Run: `npx jest src/features/catalog --no-coverage`
 Expected: PASS, 13 tests.
 
-- [ ] **Step 14: Escribir el test que falla de `productsApi`**
+- [ ] **Step 14: Write the failing `productsApi` test**
 
 `src/services/api/__tests__/productsApi.test.ts`:
 
@@ -3577,16 +3584,16 @@ import {makeStore} from '@/app/store';
 import {productsApi} from '../productsApi';
 
 describe('productsApi', () => {
-  it('trae un producto por id', async () => {
+  it('fetches a product by id', async () => {
     const store = makeStore();
     const result = await store.dispatch(
       productsApi.endpoints.getProduct.initiate('p-001'),
     );
     expect(result.data?.id).toBe('p-001');
-    expect(result.data?.name).toBe('Auriculares Nimbus');
+    expect(result.data?.name).toBe('Headphones Nimbus');
   });
 
-  it('expone el error cuando el producto no existe', async () => {
+  it('exposes the error when the product does not exist', async () => {
     const store = makeStore();
     const result = await store.dispatch(
       productsApi.endpoints.getProduct.initiate('no-existe'),
@@ -3599,7 +3606,7 @@ describe('productsApi', () => {
 Run: `npx jest src/services/api/__tests__/productsApi --no-coverage`
 Expected: FAIL — `Cannot find module '../productsApi'`.
 
-- [ ] **Step 15: Implementar `productsApi`**
+- [ ] **Step 15: Implement `productsApi`**
 
 `src/services/api/productsApi.ts`:
 
@@ -3608,10 +3615,11 @@ import {baseApi} from './baseApi';
 import type {Product} from './types';
 
 /**
- * `getProduct` es transversal: lo consumen el detalle (feature `catalog`) y la
- * pantalla de favoritos (feature `favorites`). Si viviera dentro de `catalogApi`,
- * favoritos tendría que importar de otra feature, que es justo lo que la regla
- * de dependencias prohíbe. Por eso el endpoint nace en la capa de API compartida.
+ * `getProduct` is cross-cutting: it's consumed by the detail screen (the
+ * `catalog` feature) and the favorites screen (the `favorites` feature). If
+ * it lived inside `catalogApi`, favorites would have to import from another
+ * feature, which is exactly what the dependency rule forbids. That's why the
+ * endpoint is born in the shared API layer.
  */
 export const productsApi = baseApi.injectEndpoints({
   endpoints: build => ({
@@ -3628,17 +3636,17 @@ export const {useGetProductQuery} = productsApi;
 Run: `npx jest src/services/api/__tests__/productsApi --no-coverage`
 Expected: PASS, 2 tests.
 
-- [ ] **Step 16: Verificación completa y commit**
+- [ ] **Step 16: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: catalogApi con infiniteQuery, productsApi, slice de filtros y selectors"
+git commit -m "feat: catalogApi with infiniteQuery, productsApi, filters slice, and selectors"
 ```
 
 ---
 
-## Task 11: Debounce, SearchBar y CategoryFilter
+## Task 11: Debounce, SearchBar, and CategoryFilter
 
 **Files:**
 
@@ -3655,11 +3663,11 @@ git commit -m "feat: catalogApi con infiniteQuery, productsApi, slice de filtros
 - Produces:
 
   - `useDebouncedValue<T>(value: T, delayMs: number): T`
-  - `<SearchBar />` — sin props; testID `search-input`
-  - `<CategoryFilter />` — sin props; testID por categoría `category-<name>` y `category-all`
-  - `<SortControl />` — sin props; testID `sort-<option>`
+  - `<SearchBar />` — no props; testID `search-input`
+  - `<CategoryFilter />` — no props; testID per category `category-<name>` and `category-all`
+  - `<SortControl />` — no props; testID `sort-<option>`
 
-- [ ] **Step 1: Escribir el test que falla del hook**
+- [ ] **Step 1: Write the failing hook test**
 
 `src/features/catalog/__tests__/useDebouncedValue.test.ts`:
 
@@ -3672,12 +3680,12 @@ describe('useDebouncedValue', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it('devuelve el valor inicial de inmediato', () => {
+  it('returns the initial value immediately', () => {
     const {result} = renderHook(() => useDebouncedValue('a', 300));
     expect(result.current).toBe('a');
   });
 
-  it('no actualiza antes de que pase el delay', () => {
+  it('does not update before the delay elapses', () => {
     const {rerender, result} = renderHook(
       ({value}) => useDebouncedValue(value, 300),
       {
@@ -3691,7 +3699,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('a');
   });
 
-  it('actualiza una vez cumplido el delay', () => {
+  it('updates once the delay has elapsed', () => {
     const {rerender, result} = renderHook(
       ({value}) => useDebouncedValue(value, 300),
       {
@@ -3705,7 +3713,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('b');
   });
 
-  it('colapsa varios cambios rápidos en una sola actualización', () => {
+  it('collapses several rapid changes into a single update', () => {
     const {rerender, result} = renderHook(
       ({value}) => useDebouncedValue(value, 300),
       {
@@ -3727,7 +3735,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('d');
   });
 
-  it('limpia el timer al desmontarse', () => {
+  it('clears the timer on unmount', () => {
     const clearSpy = jest.spyOn(global, 'clearTimeout');
     const {unmount} = renderHook(() => useDebouncedValue('a', 300));
     unmount();
@@ -3737,12 +3745,12 @@ describe('useDebouncedValue', () => {
 });
 ```
 
-- [ ] **Step 2: Correr y verificar que falla**
+- [ ] **Step 2: Run and verify it fails**
 
 Run: `npx jest src/features/catalog/__tests__/useDebouncedValue --no-coverage`
 Expected: FAIL — `Cannot find module '../hooks/useDebouncedValue'`.
 
-- [ ] **Step 3: Implementar el hook**
+- [ ] **Step 3: Implement the hook**
 
 `src/features/catalog/hooks/useDebouncedValue.ts`:
 
@@ -3750,9 +3758,10 @@ Expected: FAIL — `Cannot find module '../hooks/useDebouncedValue'`.
 import {useEffect, useState} from 'react';
 
 /**
- * Retrasa la propagación de `value` hasta que se queda quieto `delayMs`.
- * El `return` del efecto es lo importante: sin él, cada tecla dejaría un timer
- * vivo y el valor se actualizaría varias veces (y después de desmontar).
+ * Delays propagating `value` until it stays still for `delayMs`.
+ * The effect's `return` is the important part: without it, every keystroke
+ * would leave a live timer and the value would update several times (and
+ * after unmounting).
  */
 export function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -3766,12 +3775,12 @@ export function useDebouncedValue<T>(value: T, delayMs: number): T {
 }
 ```
 
-- [ ] **Step 4: Correr el test y verificar que pasa**
+- [ ] **Step 4: Run the test and verify it passes**
 
 Run: `npx jest src/features/catalog/__tests__/useDebouncedValue --no-coverage`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 5: Escribir el test que falla de `SearchBar`**
+- [ ] **Step 5: Write the failing `SearchBar` test**
 
 `src/features/catalog/__tests__/SearchBar.test.tsx`:
 
@@ -3787,7 +3796,7 @@ describe('SearchBar', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it('no despacha la query antes del debounce', () => {
+  it('does not dispatch the query before the debounce', () => {
     const {store} = renderWithProviders(<SearchBar />);
     fireEvent.changeText(screen.getByTestId('search-input'), 'nimbus');
     act(() => {
@@ -3796,7 +3805,7 @@ describe('SearchBar', () => {
     expect(store.getState().catalog.query).toBe('');
   });
 
-  it('despacha la query una vez cumplido el debounce', () => {
+  it('dispatches the query once the debounce has elapsed', () => {
     const {store} = renderWithProviders(<SearchBar />);
     fireEvent.changeText(screen.getByTestId('search-input'), 'nimbus');
     act(() => {
@@ -3805,7 +3814,7 @@ describe('SearchBar', () => {
     expect(store.getState().catalog.query).toBe('nimbus');
   });
 
-  it('refleja el texto tipeado de inmediato en el input', () => {
+  it('reflects the typed text immediately in the input', () => {
     renderWithProviders(<SearchBar />);
     const input = screen.getByTestId('search-input');
     fireEvent.changeText(input, 'nimbus');
@@ -3814,14 +3823,14 @@ describe('SearchBar', () => {
 });
 ```
 
-> El tercer caso documenta la decisión: el input es **controlado localmente** y solo el valor debounceado va al store. Si el input leyera del store, cada tecla dispararía un render de toda la lista.
+> The third case documents the decision: the input is **locally controlled** and only the debounced value goes to the store. If the input read from the store, every keystroke would trigger a render of the entire list.
 
-- [ ] **Step 6: Correr y verificar que falla**
+- [ ] **Step 6: Run and verify it fails**
 
 Run: `npx jest src/features/catalog/__tests__/SearchBar --no-coverage`
 Expected: FAIL — `Cannot find module '../components/SearchBar'`.
 
-- [ ] **Step 7: Implementar `SearchBar`**
+- [ ] **Step 7: Implement `SearchBar`**
 
 `src/features/catalog/components/SearchBar.tsx`:
 
@@ -3850,8 +3859,8 @@ export function SearchBar() {
     <View style={styles.container}>
       <TextInput
         testID="search-input"
-        accessibilityLabel="Buscar productos"
-        placeholder="Buscar productos"
+        accessibilityLabel="Search products"
+        placeholder="Search products"
         placeholderTextColor={colors.textMuted}
         value={text}
         onChangeText={setText}
@@ -3876,12 +3885,12 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 8: Correr el test y verificar que pasa**
+- [ ] **Step 8: Run the test and verify it passes**
 
 Run: `npx jest src/features/catalog/__tests__/SearchBar --no-coverage`
 Expected: PASS, 3 tests.
 
-- [ ] **Step 9: Implementar `CategoryFilter`**
+- [ ] **Step 9: Implement `CategoryFilter`**
 
 `src/features/catalog/components/CategoryFilter.tsx`:
 
@@ -3899,12 +3908,12 @@ import {categoryChanged} from '../catalogSlice';
 const OPTIONS: Array<Category | 'all'> = ['all', ...CATEGORIES];
 
 const LABELS: Record<Category | 'all', string> = {
-  all: 'Todas',
+  all: 'All',
   audio: 'Audio',
   wearables: 'Wearables',
-  computers: 'Computación',
+  computers: 'Computers',
   gaming: 'Gaming',
-  home: 'Hogar',
+  home: 'Home',
 };
 
 export function CategoryFilter() {
@@ -3959,7 +3968,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 10: Implementar `SortControl`**
+- [ ] **Step 10: Implement `SortControl`**
 
 `src/features/catalog/components/SortControl.tsx`:
 
@@ -3974,9 +3983,9 @@ import {colors, radius, spacing, typography} from '@/theme/tokens';
 import {sortChanged} from '../catalogSlice';
 
 const OPTIONS: Array<{value: SortOption; label: string}> = [
-  {value: 'name', label: 'Nombre'},
-  {value: 'price_asc', label: 'Precio ↑'},
-  {value: 'price_desc', label: 'Precio ↓'},
+  {value: 'name', label: 'Name'},
+  {value: 'price_asc', label: 'Price ↑'},
+  {value: 'price_desc', label: 'Price ↓'},
 ];
 
 export function SortControl() {
@@ -4030,23 +4039,23 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 11: Verificación completa y commit**
+- [ ] **Step 11: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: búsqueda con debounce, filtro por categoría y control de orden"
+git commit -m "feat: debounced search, category filter, and sort control"
 ```
 
 ---
 
-## Task 12: ProductCard y ProductListScreen
+## Task 12: ProductCard and ProductListScreen
 
 **Files:**
 
 - Create: `src/features/catalog/components/ProductCard.tsx`
 - Create: `src/features/catalog/components/ProductListSkeleton.tsx`
-- Replace: `src/features/catalog/screens/ProductListScreen.tsx` (era placeholder)
+- Replace: `src/features/catalog/screens/ProductListScreen.tsx` (was a placeholder)
 - Test: `src/features/catalog/__tests__/ProductListScreen.test.tsx`
 
 **Interfaces:**
@@ -4054,11 +4063,11 @@ git commit -m "feat: búsqueda con debounce, filtro por categoría y control de 
 - Consumes: `useGetProductsInfiniteQuery`; `selectProductsQueryArgs`, `selectHasActiveFilters`; `SearchBar`, `CategoryFilter`, `SortControl`; `EmptyState`, `ErrorView`, `Screen`, `Skeleton`; `formatPrice`; `ProductListScreenProps`.
 - Produces:
 
-  - `PRODUCT_CARD_HEIGHT = 96` (exportada, la usa `getItemLayout`)
-  - `<ProductCard product onPress />` — `{product: Product; onPress: (id: string) => void}`; memoizado con `React.memo`; testID `product-card-<id>`
+  - `PRODUCT_CARD_HEIGHT = 96` (exported, used by `getItemLayout`)
+  - `<ProductCard product onPress />` — `{product: Product; onPress: (id: string) => void}`; memoized with `React.memo`; testID `product-card-<id>`
   - `<ProductListScreen navigation />`; testIDs `product-list`, `list-skeleton`
 
-- [ ] **Step 1: Escribir el test que falla de la pantalla**
+- [ ] **Step 1: Write the failing screen test**
 
 `src/features/catalog/__tests__/ProductListScreen.test.tsx`:
 
@@ -4087,35 +4096,37 @@ function renderScreen() {
 describe('ProductListScreen', () => {
   afterEach(() => jest.clearAllMocks());
 
-  it('muestra el skeleton mientras carga', () => {
+  it('shows the skeleton while loading', () => {
     renderScreen();
     expect(screen.getByTestId('list-skeleton')).toBeVisible();
   });
 
-  it('muestra la primera página de productos', async () => {
+  it('shows the first page of products', async () => {
     renderScreen();
-    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(await screen.findByText('Gamepad Atlas')).toBeVisible();
     expect(screen.queryByTestId('list-skeleton')).toBeNull();
   });
 
-  it('filtra la lista al buscar', async () => {
+  it('filters the list when searching', async () => {
     jest.useFakeTimers();
     renderScreen();
     await waitFor(() =>
       expect(screen.getByTestId('product-list')).toBeVisible(),
     );
+    // First page under the default sort, before any filtering.
+    expect(screen.getByText('Gamepad Atlas')).toBeVisible();
 
-    fireEvent.changeText(screen.getByTestId('search-input'), 'Gamepad');
+    fireEvent.changeText(screen.getByTestId('search-input'), 'Headphones');
     act(() => {
       jest.advanceTimersByTime(300);
     });
     jest.useRealTimers();
 
-    expect(await screen.findByText('Gamepad Atlas')).toBeVisible();
-    expect(screen.queryByText('Auriculares Atlas')).toBeNull();
+    expect(await screen.findByText('Headphones Atlas')).toBeVisible();
+    expect(screen.queryByText('Gamepad Atlas')).toBeNull();
   });
 
-  it('muestra el estado vacío cuando no hay coincidencias', async () => {
+  it('shows the empty state when there are no matches', async () => {
     jest.useFakeTimers();
     renderScreen();
     await waitFor(() =>
@@ -4128,10 +4139,10 @@ describe('ProductListScreen', () => {
     });
     jest.useRealTimers();
 
-    expect(await screen.findByText('Sin resultados')).toBeVisible();
+    expect(await screen.findByText('No results')).toBeVisible();
   });
 
-  it('muestra el error con reintento cuando la API falla', async () => {
+  it('shows the error with retry when the API fails', async () => {
     server.use(
       http.get(`${API_BASE_URL}/products`, () =>
         HttpResponse.json({message: 'Boom'}, {status: 500}),
@@ -4141,24 +4152,28 @@ describe('ProductListScreen', () => {
     expect(await screen.findByTestId('retry')).toBeVisible();
   });
 
-  it('navega al detalle al tocar un producto', async () => {
+  it('navigates to the detail screen when a product is tapped', async () => {
     renderScreen();
-    fireEvent.press(await screen.findByTestId('product-card-p-005'));
+    fireEvent.press(await screen.findByTestId('product-card-p-035'));
     expect(navigation.navigate).toHaveBeenCalledWith('ProductDetail', {
-      productId: 'p-005',
+      productId: 'p-035',
     });
   });
 });
 ```
 
-> `Auriculares Atlas` y `Gamepad Atlas` existen por el dataset determinista de la Task 3; `p-005` es el quinto producto. Si el dataset cambia, estos tests fallan a propósito.
+> `Gamepad Atlas` is the first item on the default sorted page because
+> "Gamepad" sorts first alphabetically among the five category base names in
+> the deterministic dataset from Task 3; `Headphones Atlas` is what the
+> filtered case lands on. `p-035` is that same Gamepad Atlas item's id. If
+> the dataset changes, these tests fail on purpose.
 
-- [ ] **Step 2: Correr y verificar que falla**
+- [ ] **Step 2: Run and verify it fails**
 
 Run: `npx jest src/features/catalog/__tests__/ProductListScreen --no-coverage`
-Expected: FAIL — la pantalla placeholder no exporta nada de esto.
+Expected: FAIL — the placeholder screen doesn't export any of this.
 
-- [ ] **Step 3: Implementar `ProductCard`**
+- [ ] **Step 3: Implement `ProductCard`**
 
 `src/features/catalog/components/ProductCard.tsx`:
 
@@ -4170,7 +4185,7 @@ import type {Product} from '@/services/api/types';
 import {colors, radius, spacing, typography} from '@/theme/tokens';
 import {formatPrice} from '@/utils/formatPrice';
 
-/** Altura fija: es lo que habilita `getItemLayout` en la FlatList. */
+/** Fixed height: it's what enables `getItemLayout` on the FlatList. */
 export const PRODUCT_CARD_HEIGHT = 96;
 
 interface ProductCardProps {
@@ -4205,17 +4220,18 @@ function ProductCardComponent({product, onPress}: ProductCardProps) {
 }
 
 /**
- * Lo que hace efectiva a `React.memo` acá es que las props de la fila mantengan
- * su identidad: sobre todo `onPress`, que llega memoizado desde la pantalla.
- * Medido instrumentando este componente: `useCallback` en `renderItem` no cambia
- * cuántas veces renderiza la fila (10 vs 10 al tipear una búsqueda, 0 vs 0
- * forzando re-renders del padre sin cambiar la data), porque `FlatList` ya
- * envuelve cada fila en un `CellRenderer` que es `PureComponent`.
+ * What makes `React.memo` effective here is that the row's props keep their
+ * identity: above all `onPress`, which arrives memoized from the screen.
+ * Measured by instrumenting this component: `useCallback` on `renderItem`
+ * doesn't change how many times the row renders (10 vs. 10 while typing in
+ * the search box, 0 vs. 0 forcing parent re-renders without changing the
+ * data), because `FlatList` already wraps each row in a `CellRenderer` that
+ * is a `PureComponent`.
  */
 export const ProductCard = memo(ProductCardComponent);
 ```
 
-- [ ] **Step 4: Implementar el skeleton de lista**
+- [ ] **Step 4: Implement the list skeleton**
 
 `src/features/catalog/components/ProductListSkeleton.tsx`:
 
@@ -4245,7 +4261,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 5: Implementar `ProductListScreen`**
+- [ ] **Step 5: Implement `ProductListScreen`**
 
 `src/features/catalog/screens/ProductListScreen.tsx`:
 
@@ -4284,9 +4300,10 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
   } = useGetProductsInfiniteQuery(queryArgs);
 
   /**
-   * Nivel 1 de la demo de memoización (spec §5): aplanar las páginas es O(n) y
-   * corre en cada render del padre —incluido cada tecla del buscador— si no se
-   * memoiza. La dependencia es `data?.pages`, no `data`.
+   * Level 1 of the memoization demo (spec §5): flattening the pages is O(n)
+   * and runs on every render of the parent —including every keystroke in
+   * the search box— if it isn't memoized. The dependency is `data?.pages`,
+   * not `data`.
    */
   const products = useMemo<Product[]>(
     () => data?.pages.flatMap(page => page.items) ?? [],
@@ -4305,8 +4322,8 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
 
   const keyExtractor = useCallback((item: Product) => item.id, []);
 
-  // Altura fija conocida: evita que la FlatList mida cada fila y hace que el
-  // scroll a un índice sea O(1).
+  // A known fixed height: it keeps the FlatList from measuring every row
+  // and makes scrolling to an index O(1).
   const getItemLayout = useCallback(
     (_data: ArrayLike<Product> | null | undefined, index: number) => ({
       length: PRODUCT_CARD_HEIGHT,
@@ -4335,7 +4352,7 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
       <Screen>
         {header}
         <ErrorView
-          message="No pudimos cargar el catálogo."
+          message="We couldn't load the catalog."
           onRetry={() => void refetch()}
         />
       </Screen>
@@ -4363,11 +4380,11 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
           }
           ListEmptyComponent={
             <EmptyState
-              title="Sin resultados"
+              title="No results"
               message={
                 hasFilters
-                  ? 'Probá con otra búsqueda o quitá los filtros.'
-                  : 'Todavía no hay productos.'
+                  ? 'Try another search or clear the filters.'
+                  : 'There are no products yet.'
               }
             />
           }
@@ -4391,27 +4408,27 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 6: Correr el test y verificar que pasa**
+- [ ] **Step 6: Run the test and verify it passes**
 
 Run: `npx jest src/features/catalog/__tests__/ProductListScreen --no-coverage`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 7: Verificar en el simulador**
+- [ ] **Step 7: Verify on the simulator**
 
 Run: `npm run ios`
-Expected: la lista carga con skeleton, la búsqueda filtra, el scroll trae más páginas y el pull to refresh funciona.
+Expected: the list loads with a skeleton, search filters it, scrolling brings in more pages, and pull to refresh works.
 
-- [ ] **Step 8: Verificación completa y commit**
+- [ ] **Step 8: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: lista de productos con paginado infinito, filtros y memoización"
+git commit -m "feat: product list with infinite pagination, filters, and memoization"
 ```
 
 ---
 
-## Task 13: Favoritos
+## Task 13: Favorites
 
 **Files:**
 
@@ -4421,25 +4438,31 @@ git commit -m "feat: lista de productos con paginado infinito, filtros y memoiza
 - Create: `src/services/favorites/index.ts`
 - Create: `src/components/ui/FavoriteButton.tsx`
 - Modify: `src/components/ui/index.ts`
-- Modify: `src/app/store.ts` (reducer `favorites` + listeners + hidratación)
-- Replace: `src/features/favorites/screens/FavoritesScreen.tsx` (era placeholder)
+- Modify: `src/app/store.ts` (`favorites` reducer + listeners + hydration)
+- Replace: `src/features/favorites/screens/FavoritesScreen.tsx` (was a placeholder)
 - Test: `src/services/favorites/__tests__/favoritesSlice.test.ts`
 - Test: `src/features/favorites/__tests__/FavoritesScreen.test.tsx`
 
 **Interfaces:**
 
-- Consumes: `storage`, `STORAGE_KEYS`; `AppStartListening`; `useGetProductQuery` de `@/services/api/productsApi`.
-- Produces desde `@/services/favorites`:
-  - `favoritesReducer` (default del slice), `favoriteToggled(id: string)`, `favoritesRestored(ids: string[])`
+- Consumes: `storage`, `STORAGE_KEYS`; `AppStartListening`; `useGetProductQuery` from `@/services/api/productsApi`.
+- Produces from `@/services/favorites`:
+  - `favoritesReducer` (the slice's default), `favoriteToggled(id: string)`, `favoritesRestored(ids: string[])`
   - `FavoritesState = {ids: string[]}`
   - `selectFavoriteIds(state): string[]`, `makeSelectIsFavorite(id)` / `selectIsFavorite(state, id): boolean`
   - `registerFavoritesListeners(startAppListening): void`
   - `restoreFavorites({storage?}): thunk`
-- Produces: `<FavoriteButton productId />` desde `@/components/ui`; testID `favorite-<id>`.
+- Produces: `<FavoriteButton productId />` from `@/components/ui`; testID `favorite-<id>`.
 
-> **Por qué el slice vive en `services/` y no en `features/favorites/`:** el estado de favoritos lo consumen la pantalla de favoritos **y** el detalle de producto (feature `catalog`). Dejarlo dentro de la feature obligaría a un import feature→feature, que la regla de dependencias prohíbe. El estado transversal sube a la capa compartida; la feature `favorites` queda siendo solo su pantalla. Es exactamente el mecanismo que el spec §3.1 describe ("si dos features necesitan lo mismo, sube").
+> **Why the slice lives in `services/` and not in `features/favorites/`:**
+> favorites state is consumed by the favorites screen **and** the product
+> detail screen (the `catalog` feature). Leaving it inside the feature would
+> force a feature→feature import, which the dependency rule forbids.
+> Cross-cutting state moves up to the shared layer; the `favorites` feature
+> ends up being just its screen. It's exactly the mechanism spec §3.1
+> describes ("if two features need the same thing, move it up").
 
-- [ ] **Step 1: Escribir el test que falla del slice**
+- [ ] **Step 1: Write the failing slice test**
 
 `src/services/favorites/__tests__/favoritesSlice.test.ts`:
 
@@ -4456,24 +4479,24 @@ import type {FavoritesState} from '../favoritesSlice';
 const empty: FavoritesState = {ids: []};
 
 describe('favoritesSlice', () => {
-  it('arranca vacío', () => {
+  it('starts empty', () => {
     expect(favoritesReducer(undefined, {type: '@@INIT'})).toEqual(empty);
   });
 
-  it('agrega un id que no estaba', () => {
+  it('adds an id that was not there', () => {
     expect(favoritesReducer(empty, favoriteToggled('p-001')).ids).toEqual([
       'p-001',
     ]);
   });
 
-  it('quita un id que ya estaba', () => {
+  it('removes an id that was already there', () => {
     const state: FavoritesState = {ids: ['p-001', 'p-002']};
     expect(favoritesReducer(state, favoriteToggled('p-001')).ids).toEqual([
       'p-002',
     ]);
   });
 
-  it('no duplica ids', () => {
+  it('does not duplicate ids', () => {
     let state = favoritesReducer(empty, favoriteToggled('p-001'));
     state = favoritesReducer(state, favoriteToggled('p-002'));
     state = favoritesReducer(state, favoriteToggled('p-001'));
@@ -4481,7 +4504,7 @@ describe('favoritesSlice', () => {
     expect(state.ids).toEqual(['p-002', 'p-001']);
   });
 
-  it('reemplaza la lista al restaurar', () => {
+  it('replaces the list on restore', () => {
     const state: FavoritesState = {ids: ['p-009']};
     expect(
       favoritesReducer(state, favoritesRestored(['p-001', 'p-002'])).ids,
@@ -4490,7 +4513,7 @@ describe('favoritesSlice', () => {
 });
 
 describe('restoreFavorites', () => {
-  it('hidrata desde el storage', async () => {
+  it('hydrates from storage', async () => {
     const storage = createMemoryStorage();
     await storage.setItem(STORAGE_KEYS.favorites, JSON.stringify(['p-003']));
 
@@ -4503,7 +4526,7 @@ describe('restoreFavorites', () => {
     expect(dispatched).toContainEqual(favoritesRestored(['p-003']));
   });
 
-  it('no rompe si el storage tiene JSON inválido', async () => {
+  it('does not break if storage has invalid JSON', async () => {
     const storage = createMemoryStorage();
     await storage.setItem(STORAGE_KEYS.favorites, 'no-es-json');
 
@@ -4518,12 +4541,12 @@ describe('restoreFavorites', () => {
 });
 ```
 
-- [ ] **Step 2: Correr y verificar que falla**
+- [ ] **Step 2: Run and verify it fails**
 
 Run: `npx jest src/services/favorites --no-coverage`
 Expected: FAIL — `Cannot find module '../favoritesSlice'`.
 
-- [ ] **Step 3: Implementar el slice**
+- [ ] **Step 3: Implement the slice**
 
 `src/services/favorites/favoritesSlice.ts`:
 
@@ -4534,7 +4557,7 @@ import type {PayloadAction} from '@reduxjs/toolkit';
 import {storage as defaultStorage, STORAGE_KEYS} from '@/services/storage';
 import type {Storage} from '@/services/storage';
 
-/** Solo ids: los datos del producto se resuelven desde el cache de RTK Query. */
+/** Ids only: product data is resolved from the RTK Query cache. */
 export interface FavoritesState {
   ids: string[];
 }
@@ -4578,14 +4601,14 @@ export function restoreFavorites({
         : [];
       dispatch(favoritesRestored(ids));
     } catch {
-      // Storage corrupto no debe romper el arranque de la app.
+      // Corrupt storage must not break the app's startup.
       dispatch(favoritesRestored([]));
     }
   };
 }
 ```
 
-- [ ] **Step 4: Escribir selectors, listeners y barril**
+- [ ] **Step 4: Write the selectors, listeners, and barrel**
 
 `src/services/favorites/selectors.ts`:
 
@@ -4596,10 +4619,10 @@ export const selectFavoriteIds = (state: RootState): string[] =>
   state.favorites.ids;
 
 /**
- * Selector con parámetro: devuelve un boolean (primitivo), así que no hace falta
- * createSelector — `useSelector` compara con `===` y un boolean nunca cambia de
- * identidad sin cambiar de valor. Memoizarlo sería puro costo. (Spec §5,
- * contrapunto: saber cuándo *no* memoizar.)
+ * A parameterized selector: it returns a boolean (a primitive), so
+ * createSelector isn't needed — `useSelector` compares with `===` and a
+ * boolean never changes identity without changing value. Memoizing it would
+ * be pure overhead. (Spec §5, counterpoint: knowing when *not* to memoize.)
  */
 export const selectIsFavorite = (
   state: RootState,
@@ -4642,16 +4665,16 @@ export {registerFavoritesListeners} from './favoritesListeners';
 export {selectFavoriteIds, selectIsFavorite} from './selectors';
 ```
 
-- [ ] **Step 5: Montar en el store e hidratar**
+- [ ] **Step 5: Mount on the store and hydrate**
 
-En `src/app/store.ts`: agregar `favorites: favoritesReducer` a `rootReducer`, llamar `registerFavoritesListeners(startAppListening)` junto a los de auth. En `src/navigation/RootNavigator.tsx`, dentro del `useEffect` existente, agregar `void dispatch(restoreFavorites());`.
+In `src/app/store.ts`: add `favorites: favoritesReducer` to `rootReducer`, call `registerFavoritesListeners(startAppListening)` alongside the auth ones. In `src/navigation/RootNavigator.tsx`, inside the existing `useEffect`, add `void dispatch(restoreFavorites());`.
 
-- [ ] **Step 6: Correr el test del slice**
+- [ ] **Step 6: Run the slice test**
 
 Run: `npx jest src/services/favorites --no-coverage`
 Expected: PASS, 7 tests.
 
-- [ ] **Step 7: Implementar `FavoriteButton`**
+- [ ] **Step 7: Implement `FavoriteButton`**
 
 `src/components/ui/FavoriteButton.tsx`:
 
@@ -4682,7 +4705,7 @@ export function FavoriteButton({productId}: FavoriteButtonProps) {
       testID={`favorite-${productId}`}
       accessibilityRole="button"
       accessibilityLabel={
-        isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'
+        isFavorite ? 'Remove from favorites' : 'Add to favorites'
       }
       accessibilityState={{selected: isFavorite}}
       onPress={onPress}
@@ -4701,9 +4724,9 @@ const styles = StyleSheet.create({
 });
 ```
 
-Agregar `export {FavoriteButton} from './FavoriteButton';` a `src/components/ui/index.ts`.
+Add `export {FavoriteButton} from './FavoriteButton';` to `src/components/ui/index.ts`.
 
-- [ ] **Step 8: Escribir el test que falla de `FavoritesScreen`**
+- [ ] **Step 8: Write the failing `FavoritesScreen` test**
 
 `src/features/favorites/__tests__/FavoritesScreen.test.tsx`:
 
@@ -4716,19 +4739,19 @@ import {renderWithProviders} from '@/test/renderWithProviders';
 import {FavoritesScreen} from '../screens/FavoritesScreen';
 
 describe('FavoritesScreen', () => {
-  it('muestra el estado vacío sin favoritos', () => {
+  it('shows the empty state with no favorites', () => {
     renderWithProviders(<FavoritesScreen />);
-    expect(screen.getByText('Todavía no tenés favoritos')).toBeVisible();
+    expect(screen.getByText('No favorites yet')).toBeVisible();
   });
 
-  it('muestra los productos favoritos resueltos desde la API', async () => {
+  it('shows favorite products resolved from the API', async () => {
     renderWithProviders(<FavoritesScreen />, {
       preloadedState: {favorites: {ids: ['p-001']}},
     });
-    expect(await screen.findByText('Auriculares Nimbus')).toBeVisible();
+    expect(await screen.findByText('Headphones Nimbus')).toBeVisible();
   });
 
-  it('quita un producto de la lista al desmarcarlo', async () => {
+  it('removes a product from the list when unmarked', async () => {
     const {store} = renderWithProviders(<FavoritesScreen />, {
       preloadedState: {favorites: {ids: ['p-001']}},
     });
@@ -4738,7 +4761,7 @@ describe('FavoritesScreen', () => {
 });
 ```
 
-- [ ] **Step 9: Implementar `FavoritesScreen`**
+- [ ] **Step 9: Implement `FavoritesScreen`**
 
 `src/features/favorites/screens/FavoritesScreen.tsx`:
 
@@ -4754,9 +4777,10 @@ import {colors, spacing, typography} from '@/theme/tokens';
 import {formatPrice} from '@/utils/formatPrice';
 
 /**
- * Cada fila resuelve su producto por id. Si ya está en el cache de RTK Query
- * (porque se vio en el catálogo) se pinta al instante y no hay request; si no,
- * se pide. Guardar solo ids evita que favoritos y catálogo se desincronicen.
+ * Each row resolves its product by id. If it's already in the RTK Query
+ * cache (because it was seen in the catalog) it renders instantly with no
+ * request; if not, it's fetched. Storing only ids keeps favorites and the
+ * catalog from getting out of sync.
  */
 function FavoriteRow({productId}: {productId: string}) {
   const {data: product, isLoading} = useGetProductQuery(productId);
@@ -4785,8 +4809,8 @@ export function FavoritesScreen() {
     return (
       <Screen>
         <EmptyState
-          title="Todavía no tenés favoritos"
-          message="Tocá el corazón en el detalle de un producto para guardarlo acá."
+          title="No favorites yet"
+          message="Tap the heart on a product to save it here."
         />
       </Screen>
     );
@@ -4814,17 +4838,17 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 10: Correr los tests**
+- [ ] **Step 10: Run the tests**
 
 Run: `npx jest src/services src/features/favorites --no-coverage`
-Expected: PASS. El test de `FavoritesScreen` da 3 casos en verde.
+Expected: PASS. The `FavoritesScreen` test gives 3 green cases.
 
-- [ ] **Step 11: Verificación completa y commit**
+- [ ] **Step 11: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: favoritos persistidos por id resueltos desde el cache de RTK Query"
+git commit -m "feat: favorites persisted by id, resolved from the RTK Query cache"
 ```
 
 ---
@@ -4833,15 +4857,15 @@ git commit -m "feat: favoritos persistidos por id resueltos desde el cache de RT
 
 **Files:**
 
-- Replace: `src/features/catalog/screens/ProductDetailScreen.tsx` (era placeholder)
+- Replace: `src/features/catalog/screens/ProductDetailScreen.tsx` (was a placeholder)
 - Test: `src/features/catalog/__tests__/ProductDetailScreen.test.tsx`
 
 **Interfaces:**
 
-- Consumes: `useGetProductQuery` de `@/services/api/productsApi`; `FavoriteButton`, `ErrorView`, `Screen`, `Skeleton`; `formatPrice`; `ProductDetailScreenProps`.
+- Consumes: `useGetProductQuery` from `@/services/api/productsApi`; `FavoriteButton`, `ErrorView`, `Screen`, `Skeleton`; `formatPrice`; `ProductDetailScreenProps`.
 - Produces: `<ProductDetailScreen route navigation />`; testIDs `detail-skeleton`, `detail-name`, `detail-stock`.
 
-- [ ] **Step 1: Escribir el test que falla**
+- [ ] **Step 1: Write the failing test**
 
 `src/features/catalog/__tests__/ProductDetailScreen.test.tsx`:
 
@@ -4871,32 +4895,32 @@ function renderDetail(
 }
 
 describe('ProductDetailScreen', () => {
-  it('muestra el skeleton mientras carga', () => {
+  it('shows the skeleton while loading', () => {
     renderDetail('p-001');
     expect(screen.getByTestId('detail-skeleton')).toBeVisible();
   });
 
-  it('muestra los datos del producto', async () => {
+  it('shows the product data', async () => {
     renderDetail('p-001');
     expect(await screen.findByTestId('detail-name')).toHaveTextContent(
-      'Auriculares Nimbus',
+      'Headphones Nimbus',
     );
     expect(screen.getByText('$19.99')).toBeVisible();
   });
 
-  it('pinta al instante si el producto ya está en el cache', async () => {
+  it('renders instantly if the product is already in the cache', async () => {
     const {store} = renderWithProviders(<></>);
     await store.dispatch(productsApi.endpoints.getProduct.initiate('p-001'));
 
     renderDetail('p-001', store);
-    // Sin pasar por el skeleton: el dato ya estaba.
+    // Without going through the skeleton: the data was already there.
     expect(screen.queryByTestId('detail-skeleton')).toBeNull();
     expect(screen.getByTestId('detail-name')).toHaveTextContent(
-      'Auriculares Nimbus',
+      'Headphones Nimbus',
     );
   });
 
-  it('alterna el favorito', async () => {
+  it('toggles the favorite', async () => {
     const {store} = renderDetail('p-001');
     fireEvent.press(await screen.findByTestId('favorite-p-001'));
     expect(store.getState().favorites.ids).toEqual(['p-001']);
@@ -4904,10 +4928,10 @@ describe('ProductDetailScreen', () => {
     expect(store.getState().favorites.ids).toEqual([]);
   });
 
-  it('muestra un error con reintento si el producto no existe', async () => {
+  it('shows an error with retry if the product does not exist', async () => {
     server.use(
       http.get(`${API_BASE_URL}/products/:id`, () =>
-        HttpResponse.json({message: 'No encontrado'}, {status: 404}),
+        HttpResponse.json({message: 'Not found'}, {status: 404}),
       ),
     );
     renderDetail('p-999');
@@ -4916,12 +4940,12 @@ describe('ProductDetailScreen', () => {
 });
 ```
 
-- [ ] **Step 2: Correr y verificar que falla**
+- [ ] **Step 2: Run and verify it fails**
 
 Run: `npx jest src/features/catalog/__tests__/ProductDetailScreen --no-coverage`
-Expected: FAIL — el placeholder no exporta esto.
+Expected: FAIL — the placeholder doesn't export this.
 
-- [ ] **Step 3: Implementar la pantalla**
+- [ ] **Step 3: Implement the screen**
 
 `src/features/catalog/screens/ProductDetailScreen.tsx`:
 
@@ -4939,9 +4963,9 @@ export function ProductDetailScreen({route}: ProductDetailScreenProps) {
   const {productId} = route.params;
 
   /**
-   * Si el producto ya está en el cache (se vio en la lista), `data` viene
-   * poblado en el primer render y RTK Query revalida en background. Es el
-   * comportamiento que hace que la navegación se sienta instantánea.
+   * If the product is already in the cache (it was seen in the list),
+   * `data` comes populated on the first render and RTK Query revalidates in
+   * the background. It's the behavior that makes navigation feel instant.
    */
   const {
     data: product,
@@ -4966,20 +4990,21 @@ export function ProductDetailScreen({route}: ProductDetailScreenProps) {
     return (
       <Screen>
         <ErrorView
-          message="No pudimos cargar el producto."
+          message="We couldn't load the product."
           onRetry={() => void refetch()}
         />
       </Screen>
     );
   }
 
-  // Cálculo deliberadamente NO memoizado (spec §5, contrapunto): es una
-  // comparación y una concatenación sobre datos que ya están en memoria. Envolverlo
-  // en useMemo costaría más que recalcularlo —el hook guarda el array de
-  // dependencias y lo compara en cada render— y agregaría ruido al leerlo.
-  // La memoización se justifica por costo medido, no por reflejo.
+  // Deliberately NOT memoized calculation (spec §5, counterpoint): it's a
+  // comparison and a string concatenation over data that's already in
+  // memory. Wrapping it in useMemo would cost more than recomputing it —the
+  // hook stores the dependency array and compares it on every render— and
+  // would add noise when reading it. Memoization is justified by measured
+  // cost, not by reflex.
   const availability =
-    product.stock > 0 ? `${product.stock} en stock` : 'Sin stock';
+    product.stock > 0 ? `${product.stock} in stock` : 'Out of stock';
 
   return (
     <Screen scroll>
@@ -5028,45 +5053,45 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 4: Correr el test y verificar que pasa**
+- [ ] **Step 4: Run the test and verify it passes**
 
 Run: `npx jest src/features/catalog/__tests__/ProductDetailScreen --no-coverage`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 5: Verificación completa y commit**
+- [ ] **Step 5: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: detalle de producto sobre el cache de RTK Query con toggle de favorito"
+git commit -m "feat: product detail on top of the RTK Query cache with favorite toggle"
 ```
 
 ---
 
-## Task 15: Perfil y Performance Lab
+## Task 15: Profile and Performance Lab
 
 **Files:**
 
-- Replace: `src/features/profile/screens/ProfileScreen.tsx` (era placeholder)
+- Replace: `src/features/profile/screens/ProfileScreen.tsx` (was a placeholder)
 - Create: `src/features/profile/screens/PerformanceLabScreen.tsx`
 - Create: `src/navigation/ProfileStack.tsx`
-- Modify: `src/navigation/types.ts` (agregar `ProfileStackParamList`)
-- Modify: `src/navigation/AppTabs.tsx` (usar `ProfileStack`)
+- Modify: `src/navigation/types.ts` (add `ProfileStackParamList`)
+- Modify: `src/navigation/AppTabs.tsx` (use `ProfileStack`)
 - Test: `src/features/profile/__tests__/ProfileScreen.test.tsx`
 - Test: `src/features/profile/__tests__/PerformanceLabScreen.test.tsx`
 
 **Interfaces:**
 
-- Consumes: `useSession` de `@/services/session`; `Button`, `Screen`.
+- Consumes: `useSession` from `@/services/session`; `Button`, `Screen`.
 - Produces:
 
   - `ProfileStackParamList = {Profile: undefined; PerformanceLab: undefined}`
   - `<ProfileScreen navigation />`; testIDs `profile-email`, `profile-logout`, `profile-open-lab`
   - `<PerformanceLabScreen />`; testIDs `lab-input`, `lab-render-count-plain-<i>`, `lab-render-count-memo-<i>`, `lab-parent-renders`
 
-- [ ] **Step 1: Agregar el stack de perfil a los tipos**
+- [ ] **Step 1: Add the profile stack to the types**
 
-En `src/navigation/types.ts`, agregar:
+In `src/navigation/types.ts`, add:
 
 ```ts
 export type ProfileStackParamList = {
@@ -5080,9 +5105,9 @@ export type ProfileScreenProps = NativeStackScreenProps<
 >;
 ```
 
-y cambiar `AppTabParamList` para que `ProfileTab` sea `NavigatorScreenParams<ProfileStackParamList>`.
+and change `AppTabParamList` so `ProfileTab` is `NavigatorScreenParams<ProfileStackParamList>`.
 
-- [ ] **Step 2: Escribir el test que falla del perfil**
+- [ ] **Step 2: Write the failing profile test**
 
 `src/features/profile/__tests__/ProfileScreen.test.tsx`:
 
@@ -5118,7 +5143,7 @@ function renderProfile() {
 describe('ProfileScreen', () => {
   afterEach(() => jest.clearAllMocks());
 
-  it('muestra los datos del usuario', () => {
+  it('shows the user data', () => {
     renderProfile();
     expect(screen.getByTestId('profile-email')).toHaveTextContent(
       'demo@catalog.dev',
@@ -5126,9 +5151,9 @@ describe('ProfileScreen', () => {
     expect(screen.getByText('Demo User')).toBeVisible();
   });
 
-  it('cierra la sesión y limpia el cache de la API', async () => {
+  it('signs out and clears the API cache', async () => {
     const {store} = renderProfile();
-    // Poblar el cache de verdad: si no, el assert final pasaría trivialmente.
+    // Actually populate the cache: otherwise the final assertion would pass trivially.
     await store.dispatch(productsApi.endpoints.getProduct.initiate('p-001'));
     expect(Object.keys(store.getState().api.queries).length).toBeGreaterThan(0);
 
@@ -5141,7 +5166,7 @@ describe('ProfileScreen', () => {
     expect(Object.keys(store.getState().api.queries)).toHaveLength(0);
   });
 
-  it('navega al Performance Lab', () => {
+  it('navigates to the Performance Lab', () => {
     renderProfile();
     fireEvent.press(screen.getByTestId('profile-open-lab'));
     expect(navigation.navigate).toHaveBeenCalledWith('PerformanceLab');
@@ -5149,12 +5174,12 @@ describe('ProfileScreen', () => {
 });
 ```
 
-- [ ] **Step 3: Correr y verificar que falla**
+- [ ] **Step 3: Run and verify it fails**
 
 Run: `npx jest src/features/profile --no-coverage`
-Expected: FAIL — el placeholder no expone esos testIDs.
+Expected: FAIL — the placeholder doesn't expose those testIDs.
 
-- [ ] **Step 4: Implementar `ProfileScreen`**
+- [ ] **Step 4: Implement `ProfileScreen`**
 
 `src/features/profile/screens/ProfileScreen.tsx`:
 
@@ -5173,7 +5198,7 @@ export function ProfileScreen({navigation}: ProfileScreenProps) {
   return (
     <Screen scroll>
       <View style={styles.card}>
-        <Text style={styles.name}>{user?.name ?? 'Invitado'}</Text>
+        <Text style={styles.name}>{user?.name ?? 'Guest'}</Text>
         <Text testID="profile-email" style={styles.email}>
           {user?.email ?? '—'}
         </Text>
@@ -5186,11 +5211,7 @@ export function ProfileScreen({navigation}: ProfileScreenProps) {
           variant="ghost"
           onPress={() => navigation.navigate('PerformanceLab')}
         />
-        <Button
-          testID="profile-logout"
-          label="Cerrar sesión"
-          onPress={signOut}
-        />
+        <Button testID="profile-logout" label="Sign out" onPress={signOut} />
       </View>
     </Screen>
   );
@@ -5204,12 +5225,12 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 5: Correr el test del perfil**
+- [ ] **Step 5: Run the profile test**
 
 Run: `npx jest src/features/profile/__tests__/ProfileScreen --no-coverage`
 Expected: PASS, 3 tests.
 
-- [ ] **Step 6: Escribir el test que falla del Performance Lab**
+- [ ] **Step 6: Write the failing Performance Lab test**
 
 `src/features/profile/__tests__/PerformanceLabScreen.test.tsx`:
 
@@ -5220,7 +5241,7 @@ import React from 'react';
 import {PerformanceLabScreen} from '../screens/PerformanceLabScreen';
 
 describe('PerformanceLabScreen', () => {
-  it('arranca con todas las filas en 1 render', () => {
+  it('starts with every row at 1 render', () => {
     render(<PerformanceLabScreen />);
     expect(screen.getByTestId('lab-render-count-plain-0')).toHaveTextContent(
       '1',
@@ -5230,7 +5251,7 @@ describe('PerformanceLabScreen', () => {
     );
   });
 
-  it('re-renderiza las filas sin memoizar al tipear, y no las memoizadas', () => {
+  it('re-renders the non-memoized rows when typing, and not the memoized ones', () => {
     render(<PerformanceLabScreen />);
     fireEvent.changeText(screen.getByTestId('lab-input'), 'a');
     fireEvent.changeText(screen.getByTestId('lab-input'), 'ab');
@@ -5243,7 +5264,7 @@ describe('PerformanceLabScreen', () => {
     );
   });
 
-  it('cuenta los renders del padre', () => {
+  it('counts the parent renders', () => {
     render(<PerformanceLabScreen />);
     fireEvent.changeText(screen.getByTestId('lab-input'), 'a');
     expect(screen.getByTestId('lab-parent-renders')).toHaveTextContent('2');
@@ -5251,14 +5272,15 @@ describe('PerformanceLabScreen', () => {
 });
 ```
 
-> Este test es la prueba de que la demo **mide** algo, no de que se ve linda. Si alguien rompe la memoización, el test falla.
+> This test is the proof that the demo **measures** something, not that it
+> looks nice. If someone breaks the memoization, the test fails.
 
-- [ ] **Step 7: Correr y verificar que falla**
+- [ ] **Step 7: Run and verify it fails**
 
 Run: `npx jest src/features/profile/__tests__/PerformanceLabScreen --no-coverage`
 Expected: FAIL — `Cannot find module '../screens/PerformanceLabScreen'`.
 
-- [ ] **Step 8: Implementar `PerformanceLabScreen`**
+- [ ] **Step 8: Implement `PerformanceLabScreen`**
 
 `src/features/profile/screens/PerformanceLabScreen.tsx`:
 
@@ -5271,7 +5293,7 @@ import {colors, radius, spacing, typography} from '@/theme/tokens';
 
 const ROWS = Array.from({length: 8}, (_, index) => ({
   id: index,
-  label: `Fila ${index + 1}`,
+  label: `Row ${index + 1}`,
 }));
 
 interface RowProps {
@@ -5282,10 +5304,10 @@ interface RowProps {
 }
 
 /**
- * El contador vive en un ref que se incrementa durante el render. Es impuro a
- * propósito: es la única forma de contar renders sin provocar otro render.
- * En StrictMode con doble render los números se duplicarían — vale la pena
- * saberlo y decirlo antes de que lo pregunten.
+ * The counter lives in a ref that's incremented during render. It's impure
+ * on purpose: it's the only way to count renders without triggering another
+ * render. Under StrictMode's double render the numbers would double —
+ * that's worth knowing and saying before it gets asked.
  */
 function Row({label, index, variant, onPress}: RowProps) {
   const renders = useRef(0);
@@ -5310,14 +5332,14 @@ export function PerformanceLabScreen() {
   const parentRenders = useRef(0);
   parentRenders.current += 1;
 
-  // Columna izquierda: handler recreado en cada render. `Row` no está memoizada,
-  // así que re-renderiza siempre.
+  // Left column: handler recreated on every render. `Row` isn't memoized,
+  // so it always re-renders.
   const onPressPlain = (index: number) => {
     void index;
   };
 
-  // Columna derecha: handler estable + fila memoizada. La lista de filas también
-  // se memoiza para que su identidad no cambie.
+  // Right column: stable handler + memoized row. The row list is also
+  // memoized so its identity doesn't change.
   const onPressMemo = useCallback((index: number) => {
     void index;
   }, []);
@@ -5329,14 +5351,14 @@ export function PerformanceLabScreen() {
       <View style={styles.header}>
         <TextInput
           testID="lab-input"
-          placeholder="Escribí para forzar renders del padre"
+          placeholder="Type to force parent re-renders"
           placeholderTextColor={colors.textMuted}
           value={text}
           onChangeText={setText}
           style={styles.input}
         />
         <Text style={styles.caption}>
-          Renders del padre:{' '}
+          Parent renders:{' '}
           <Text testID="lab-parent-renders" style={styles.badgeInline}>
             {parentRenders.current}
           </Text>
@@ -5346,7 +5368,7 @@ export function PerformanceLabScreen() {
       <ScrollView contentContainerStyle={styles.columns} horizontal={false}>
         <View style={styles.columnsRow}>
           <View style={styles.column}>
-            <Text style={styles.columnTitle}>Sin memoizar</Text>
+            <Text style={styles.columnTitle}>Not memoized</Text>
             {ROWS.map(row => (
               <Row
                 key={row.id}
@@ -5359,7 +5381,7 @@ export function PerformanceLabScreen() {
           </View>
 
           <View style={styles.column}>
-            <Text style={styles.columnTitle}>Memoizada</Text>
+            <Text style={styles.columnTitle}>Memoized</Text>
             {memoRows.map(row => (
               <MemoRow
                 key={row.id}
@@ -5373,12 +5395,11 @@ export function PerformanceLabScreen() {
         </View>
 
         <Text style={styles.explainer}>
-          Cada tecla re-renderiza esta pantalla. La columna izquierda vuelve a
-          renderizar sus 8 filas porque `onPress` cambia de identidad; la
-          derecha no renderiza ninguna porque `React.memo` + `useCallback`
-          mantienen las props estables. Con 8 filas la diferencia es
-          irrelevante: el punto es que con 800 deja de serlo, y que memoizar sin
-          medir es adivinar.
+          Every keystroke re-renders this screen. The left column re-renders its
+          8 rows because `onPress` changes identity; the right one renders none
+          because `React.memo` + `useCallback` keep the props stable. With 8
+          rows the difference is irrelevant: the point is that with 800 it stops
+          being irrelevant, and that memoizing without measuring is guessing.
         </Text>
       </ScrollView>
     </Screen>
@@ -5415,12 +5436,12 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 9: Correr el test y verificar que pasa**
+- [ ] **Step 9: Run the test and verify it passes**
 
 Run: `npx jest src/features/profile --no-coverage`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 10: Montar el stack de perfil**
+- [ ] **Step 10: Mount the profile stack**
 
 `src/navigation/ProfileStack.tsx`:
 
@@ -5441,7 +5462,7 @@ export function ProfileStack() {
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{title: 'Perfil'}}
+        options={{title: 'Profile'}}
       />
       <Stack.Screen
         name="PerformanceLab"
@@ -5453,102 +5474,102 @@ export function ProfileStack() {
 }
 ```
 
-En `src/navigation/AppTabs.tsx`, reemplazar el `component={ProfileScreen}` del tab por `component={ProfileStack}` con `options={{title: 'Perfil', headerShown: false}}`.
+In `src/navigation/AppTabs.tsx`, replace the tab's `component={ProfileScreen}` with `component={ProfileStack}` with `options={{title: 'Profile', headerShown: false}}`.
 
-- [ ] **Step 11: Verificar en el simulador**
+- [ ] **Step 11: Verify on the simulator**
 
 Run: `npm run ios`
-Expected: en Perfil → Performance Lab, al tipear la columna izquierda sube sus contadores y la derecha queda en 1.
+Expected: in Profile → Performance Lab, typing bumps the left column's counters while the right one stays at 1.
 
-- [ ] **Step 12: Verificación completa y commit**
+- [ ] **Step 12: Full verification and commit**
 
 ```bash
 npm run lint && npm run typecheck && npx jest --no-coverage
 git add -A
-git commit -m "feat: perfil con logout y Performance Lab con contador de renders"
+git commit -m "feat: profile with logout and Performance Lab with render counter"
 ```
 
 ---
 
-## Task 16: Documentación y verificación final
+## Task 16: Documentation and final verification
 
 **Files:**
 
 - Create: `CLAUDE.md`
 - Create: `README.md`
-- Modify: `docs/superpowers/specs/2026-08-30-rn-product-catalog-design.md` (estado → implementado)
+- Modify: `docs/superpowers/specs/2026-08-30-rn-product-catalog-design.md` (status → implemented)
 
 **Interfaces:**
 
-- Consumes: todo lo anterior.
-- Produces: documentación. Sin código nuevo.
+- Consumes: everything above.
+- Produces: documentation. No new code.
 
-- [ ] **Step 1: Escribir `CLAUDE.md`**
+- [ ] **Step 1: Write `CLAUDE.md`**
 
-Secciones obligatorias, en este orden:
+Required sections, in this order:
 
-1. **Comandos** — `npm run lint`, `typecheck`, `test`, `ios`, `android`, `start`; cómo correr un test suelto.
-2. **Mapa de arquitectura** — el árbol real de `src/` (generado con `find src -type d | sort`, no de memoria) con una línea por carpeta.
-3. **Regla de dependencias** — features no importan de features; qué subió a `services/` y por qué (`session`, `favorites`, `productsApi`); que la regla está enforceada en `eslint.config.js`.
-4. **Estado servidor vs. estado cliente** — RTK Query es dueño de productos y usuario; los slices, de sesión, filtros y favoritos. No duplicar.
-5. **Convenciones** — named exports salvo `App`; tests en `__tests__/` junto al código; `testID` en kebab-case; imports ordenados por `import/order`.
-6. **Estrategia de testing** — qué se testea y qué no; `renderWithProviders`; sin snapshots grandes; MSW con `onUnhandledRequest: 'error'`.
-7. **Gotchas** — el alias hace falta en tsconfig **y** babel **y** jest; MSW en RN necesita `msw/native` + polyfills (y el resultado real del Step 12 de la Task 4); `noUncheckedIndexedAccess` obliga a chequear accesos por índice; New Architecture activa por defecto.
-8. **Decisiones** — enlace a la sección de ADRs del README.
+1. **Commands** — `npm run lint`, `typecheck`, `test`, `ios`, `android`, `start`; how to run a single test.
+2. **Architecture map** — the real `src/` tree (generated with `find src -type d | sort`, not from memory) with one line per folder.
+3. **Dependency rule** — features don't import from features; what moved up to `services/` and why (`session`, `favorites`, `productsApi`); that the rule is enforced in `eslint.config.js`.
+4. **Server state vs. client state** — RTK Query owns products and the user; the slices own session, filters, and favorites. Don't duplicate.
+5. **Conventions** — named exports except `App`; tests in `__tests__/` alongside the code; `testID` in kebab-case; imports ordered by `import/order`.
+6. **Testing strategy** — what's tested and what isn't; `renderWithProviders`; no large snapshots; MSW with `onUnhandledRequest: 'error'`.
+7. **Gotchas** — the alias is needed in tsconfig **and** babel **and** jest; MSW on RN needs `msw/native` + polyfills (and the actual outcome of Task 4's Step 12); `noUncheckedIndexedAccess` forces checking index accesses; New Architecture is active by default.
+8. **Decisions** — a link to the README's ADR section.
 
-- [ ] **Step 2: Escribir `README.md`**
+- [ ] **Step 2: Write `README.md`**
 
-Secciones obligatorias:
+Required sections:
 
-1. Badge de CI (`![CI](https://github.com/<usuario>/rn-product-catalog/actions/workflows/ci.yml/badge.svg)`).
-2. **Qué es** — dos párrafos.
-3. **Setup desde clon limpio** — `npm ci`, `cd ios && pod install`, `npm run ios` / `npm run android`, requisitos de versión (Node 20, JDK 17, Xcode).
-4. **Credenciales de demo** — `demo@catalog.dev` / `password123`.
-5. **Capturas** — login, catálogo, detalle, favoritos, Performance Lab. Tomarlas del simulador y guardarlas en `docs/screenshots/`.
-6. **Notas de entrevista** — la tabla del Step 3.
-7. **ADRs** — los cinco del spec §12, actualizados con lo que efectivamente pasó (versión final de RN, resultado de MSW en RN).
-8. **Qué no está y por qué** — los no objetivos del spec §1: sin backend real, sin dark mode, sin i18n, sin Detox, sin build nativo en CI, cobertura parcial y deliberada.
+1. CI badge (`![CI](https://github.com/<user>/rn-product-catalog/actions/workflows/ci.yml/badge.svg)`).
+2. **What it is** — two paragraphs.
+3. **Setup from a clean clone** — `npm ci`, `cd ios && pod install`, `npm run ios` / `npm run android`, version requirements (Node 20, JDK 17, Xcode).
+4. **Demo credentials** — `demo@catalog.dev` / `password123`.
+5. **Screenshots** — login, catalog, detail, favorites, Performance Lab. Take them from the simulator and save them to `docs/screenshots/`.
+6. **Interview notes** — the table from Step 3.
+7. **ADRs** — the five from spec §12, updated with what actually happened (RN's final version, MSW's outcome on RN).
+8. **What's missing and why** — the non-goals from spec §1: no real backend, no dark mode, no i18n, no Detox, no native build in CI, partial and deliberate coverage.
 
-- [ ] **Step 3: Escribir la tabla de notas de entrevista**
+- [ ] **Step 3: Write the interview notes table**
 
-Cada fila apunta a un archivo concreto. Verificar que cada ruta existe antes de dar la task por cerrada.
+Each row points to a concrete file. Verify that each path exists before closing out the task.
 
-| Tema                               | Dónde está                                                              | Respuesta corta                                                                                                                                                                                                                                                                 |
-| ---------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| New Architecture                   | `android/gradle.properties`, `ios/Podfile`                              | Fabric + TurboModules activos por defecto desde RN 0.76; renderer en C++, sin el bridge asíncrono.                                                                                                                                                                              |
-| Memoización nivel 1                | `src/features/catalog/screens/ProductListScreen.tsx`                    | Medido: `useCallback` en `renderItem` no cambia cuántas veces renderiza la fila (10 vs 10 al buscar, 0 vs 0 sin cambiar data), porque `FlatList` ya la envuelve en un `PureComponent`. Lo que carga el peso es el handler `onPress` memoizado, que mantiene estables las props. |
-| Memoización nivel 2                | `src/features/catalog/selectors.ts`                                     | `createSelector`: un selector que devuelve un objeto nuevo re-renderiza en cada dispatch.                                                                                                                                                                                       |
-| Memoización nivel 3                | `src/features/profile/screens/PerformanceLabScreen.tsx`                 | Contador de renders por fila: la diferencia se ve, no se explica.                                                                                                                                                                                                               |
-| Cuándo NO memoizar                 | `src/features/catalog/screens/ProductDetailScreen.tsx`                  | Cálculo barato sin `useMemo`, con el porqué en un comentario.                                                                                                                                                                                                                   |
-| Custom hook con cleanup            | `src/features/catalog/hooks/useDebouncedValue.ts`                       | El `return` del `useEffect` es lo que evita timers colgados.                                                                                                                                                                                                                    |
-| RTK Query vs. Context              | `src/services/api/baseApi.ts`, `src/features/catalog/catalogApi.ts`     | Cache, tags, dedupe y estados de carga gratis; Context no es un sistema de cache.                                                                                                                                                                                               |
-| Estado servidor vs. cliente        | `src/features/catalog/catalogSlice.ts`                                  | El slice guarda filtros, no productos.                                                                                                                                                                                                                                          |
-| Paginado infinito                  | `src/features/catalog/catalogApi.ts`                                    | `infiniteQuery` con cursor; `getNextPageParam` devuelve `undefined` para cortar.                                                                                                                                                                                                |
-| Navegación tipada                  | `src/navigation/types.ts`                                               | `ParamList` + `declare global` en `ReactNavigation.RootParamList`.                                                                                                                                                                                                              |
-| Manejo de 401                      | `src/services/api/baseApi.ts`, `src/services/api/sessionEvents.ts`      | Wrapper del baseQuery que despacha un evento neutral; evita que services dependa de features.                                                                                                                                                                                   |
-| Seguridad del token                | `src/services/storage/asyncStorage.ts`                                  | AsyncStorage no está cifrado; en producción va Keychain. Está detrás de una interfaz para cambiarlo en un archivo (ADR-003).                                                                                                                                                    |
-| Persistencia sin ensuciar reducers | `src/services/session/`, `src/services/favorites/favoritesListeners.ts` | `createListenerMiddleware`: los reducers quedan puros y síncronos.                                                                                                                                                                                                              |
-| MSW                                | `src/mocks/`                                                            | Intercepta a nivel red: cero código de mocking en la app, mismos handlers en dev y en tests.                                                                                                                                                                                    |
-| Performance de listas              | `src/features/catalog/components/ProductCard.tsx`                       | `getItemLayout` con altura fija, `keyExtractor` estable, filas memoizadas.                                                                                                                                                                                                      |
-| Estrategia de testing              | `src/features/catalog/__tests__/ProductListScreen.test.tsx`             | Integración real contra MSW, sin mockear el store ni la red a mano.                                                                                                                                                                                                             |
-| Escala a 40 pantallas              | `eslint.config.js`                                                      | La regla de dependencias entre features está enforceada por el linter, no por disciplina.                                                                                                                                                                                       |
+| Topic                                 | Where it is                                                             | Short answer                                                                                                                                                                                                                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New Architecture                      | `android/gradle.properties`, `ios/Podfile`                              | Fabric + TurboModules active by default since RN 0.76; C++ renderer, no asynchronous bridge.                                                                                                                                                                                                             |
+| Memoization level 1                   | `src/features/catalog/screens/ProductListScreen.tsx`                    | Measured: `useCallback` on `renderItem` doesn't change how many times the row renders (10 vs. 10 while searching, 0 vs. 0 without changing the data), because `FlatList` already wraps it in a `PureComponent`. What carries the weight is the memoized `onPress` handler, which keeps the props stable. |
+| Memoization level 2                   | `src/features/catalog/selectors.ts`                                     | `createSelector`: a selector that returns a new object re-renders on every dispatch.                                                                                                                                                                                                                     |
+| Memoization level 3                   | `src/features/profile/screens/PerformanceLabScreen.tsx`                 | Per-row render counter: the difference is seen, not explained.                                                                                                                                                                                                                                           |
+| When NOT to memoize                   | `src/features/catalog/screens/ProductDetailScreen.tsx`                  | A cheap calculation without `useMemo`, with the reason in a comment.                                                                                                                                                                                                                                     |
+| Custom hook with cleanup              | `src/features/catalog/hooks/useDebouncedValue.ts`                       | The `useEffect`'s `return` is what avoids dangling timers.                                                                                                                                                                                                                                               |
+| RTK Query vs. Context                 | `src/services/api/baseApi.ts`, `src/features/catalog/catalogApi.ts`     | Cache, tags, dedupe, and loading states for free; Context isn't a caching system.                                                                                                                                                                                                                        |
+| Server state vs. client state         | `src/features/catalog/catalogSlice.ts`                                  | The slice stores filters, not products.                                                                                                                                                                                                                                                                  |
+| Infinite pagination                   | `src/features/catalog/catalogApi.ts`                                    | `infiniteQuery` with a cursor; `getNextPageParam` returns `undefined` to cut it off.                                                                                                                                                                                                                     |
+| Typed navigation                      | `src/navigation/types.ts`                                               | `ParamList` + `declare global` on `ReactNavigation.RootParamList`.                                                                                                                                                                                                                                       |
+| 401 handling                          | `src/services/api/baseApi.ts`, `src/services/api/sessionEvents.ts`      | A baseQuery wrapper that dispatches a neutral event; keeps services from depending on features.                                                                                                                                                                                                          |
+| Token security                        | `src/services/storage/asyncStorage.ts`                                  | AsyncStorage isn't encrypted; in production, Keychain. It's behind an interface so swapping it is a single-file change (ADR-003).                                                                                                                                                                        |
+| Persistence without dirtying reducers | `src/services/session/`, `src/services/favorites/favoritesListeners.ts` | `createListenerMiddleware`: the reducers stay pure and synchronous.                                                                                                                                                                                                                                      |
+| MSW                                   | `src/mocks/`                                                            | Intercepts at the network level: zero mocking code in the app, the same handlers in dev and in tests.                                                                                                                                                                                                    |
+| List performance                      | `src/features/catalog/components/ProductCard.tsx`                       | `getItemLayout` with a fixed height, stable `keyExtractor`, memoized rows.                                                                                                                                                                                                                               |
+| Testing strategy                      | `src/features/catalog/__tests__/ProductListScreen.test.tsx`             | Real integration against MSW, without mocking the store or the network by hand.                                                                                                                                                                                                                          |
+| Scaling to 40 screens                 | `eslint.config.js`                                                      | The dependency rule between features is enforced by the linter, not by discipline.                                                                                                                                                                                                                       |
 
-- [ ] **Step 4: Tomar las capturas**
+- [ ] **Step 4: Take the screenshots**
 
 ```bash
 npm run ios
 ```
 
-Con la app corriendo, capturar cada pantalla (`Cmd+S` en el simulador) y guardarlas en `docs/screenshots/` con los nombres `login.png`, `catalog.png`, `detail.png`, `favorites.png`, `performance-lab.png`. Referenciarlas desde el README.
+With the app running, capture each screen (`Cmd+S` on the simulator) and save them to `docs/screenshots/` with the names `login.png`, `catalog.png`, `detail.png`, `favorites.png`, `performance-lab.png`. Reference them from the README.
 
-- [ ] **Step 5: Verificar la cobertura contra el umbral**
+- [ ] **Step 5: Verify coverage against the threshold**
 
 Run: `npm test -- --coverage`
-Expected: PASS, sin que `coverageThreshold` rompa.
+Expected: PASS, with `coverageThreshold` not breaking.
 
-Si rompe, la acción es **agregar un test que falte**, no bajar el umbral. Si el umbral es genuinamente irreal para un archivo de presentación, excluirlo de `collectCoverageFrom` con un comentario que diga por qué.
+If it breaks, the action is **to add a missing test**, not to lower the threshold. If the threshold is genuinely unrealistic for a presentation file, exclude it from `collectCoverageFrom` with a comment saying why.
 
-- [ ] **Step 6: Verificación completa desde un clon limpio**
+- [ ] **Step 6: Full verification from a clean clone**
 
 ```bash
 cd /tmp && rm -rf catalog-verify
@@ -5556,31 +5577,31 @@ git clone /Users/emilianomartino/Documents/rn-product-catalog catalog-verify
 cd catalog-verify && npm ci && npm run lint && npm run typecheck && npm test -- --coverage
 ```
 
-Expected: los cuatro comandos en verde sin ningún paso manual extra. Si falta algo, el README está incompleto: arreglarlo y repetir.
+Expected: all four commands green with no extra manual step. If something's missing, the README is incomplete: fix it and repeat.
 
-- [ ] **Step 7: Marcar el spec como implementado**
+- [ ] **Step 7: Mark the spec as implemented**
 
-En `docs/superpowers/specs/2026-08-30-rn-product-catalog-design.md`, cambiar `**Estado:** aprobado (pendiente de plan de implementación)` por `**Estado:** implementado — ver docs/superpowers/plans/2026-08-30-rn-product-catalog.md`.
+In `docs/superpowers/specs/2026-08-30-rn-product-catalog-design.md`, change `**Status:** approved (pending implementation plan)` to `**Status:** implemented — see docs/superpowers/plans/2026-08-30-rn-product-catalog.md`.
 
 - [ ] **Step 8: Commit**
 
 ```bash
 git add -A
-git commit -m "docs: CLAUDE.md, README con notas de entrevista y capturas"
+git commit -m "docs: CLAUDE.md, README with interview notes and screenshots"
 ```
 
-- [ ] **Step 9: Publicar en GitHub**
+- [ ] **Step 9: Publish to GitHub**
 
 ```bash
 gh repo create rn-product-catalog --public --source=. --remote=origin --push
 ```
 
-Verificar que el workflow de CI corre y queda en verde: `gh run watch`. El badge del README debe mostrar `passing`.
+Verify that the CI workflow runs and comes out green: `gh run watch`. The README's badge should show `passing`.
 
 ---
 
-## Autorrevisión del plan
+## Plan self-review
 
-**Cobertura del spec:** las 13 secciones tienen task. §1 criterios → Tasks 1 y 16; §2 stack → Task 1; §3 arquitectura → Tasks 5–15; §4.1 auth → 7–8; §4.2 catálogo → 10–12; §4.3 detalle → 14; §4.4 favoritos → 13; §4.5 perfil y lab → 15; §5 memoización (3 niveles + contrapunto) → 10, 12, 14, 15; §6 backend mockeado → 3–4; §7 testing → distribuido, con los 6 archivos de la tabla del spec cubiertos; §8 types → 1; §9 lint → 1; §10 CI → 1; §11 docs → 16; §12 ADRs → 16 Step 2.
+**Spec coverage:** all 13 sections have a task. §1 criteria → Tasks 1 and 16; §2 stack → Task 1; §3 architecture → Tasks 5–15; §4.1 auth → 7–8; §4.2 catalog → 10–12; §4.3 detail → 14; §4.4 favorites → 13; §4.5 profile and lab → 15; §5 memoization (3 levels + counterpoint) → 10, 12, 14, 15; §6 mocked backend → 3–4; §7 testing → distributed, with the 6 files from the spec's table covered; §8 types → 1; §9 lint → 1; §10 CI → 1; §11 docs → 16; §12 ADRs → 16 Step 2.
 
-**Deuda conocida que el plan corrige sobre la marcha:** la regla de dependencias fuerza dos movimientos que el árbol del spec no anticipaba —`getProduct` a `services/api/productsApi.ts` (Task 13) y el estado de sesión a `services/session/` (Task 15)—. Ambos están planificados, no improvisados, y son material de entrevista por sí mismos.
+**Known debt the plan corrects along the way:** the dependency rule forces two moves that the spec's tree didn't anticipate —`getProduct` to `services/api/productsApi.ts` (Task 13) and session state to `services/session/` (Task 15)—. Both are planned, not improvised, and are interview material in their own right.
