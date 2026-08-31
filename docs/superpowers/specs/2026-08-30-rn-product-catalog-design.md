@@ -33,21 +33,21 @@ por qué esta arquitectura, por qué esta librería, por qué esta memoización,
 
 Versiones verificadas en npm el 2026-08-30.
 
-| Pieza | Versión | Justificación |
-|---|---|---|
-| React Native (CLI bare) | 0.87.1 | Última estable. New Architecture (Fabric + TurboModules) activa por defecto. Bare, no Expo, para poder hablar del layer nativo (Podfile, Gradle, autolinking). |
-| React | 19.2.3 | Peer dependency de RN 0.87. |
-| React Navigation | 7.x — `native-stack` + `bottom-tabs` | Estándar de facto. `native-stack` usa navegadores nativos (mejor performance y gestos que `stack`). |
-| Redux Toolkit | 2.12 | Estado global de la app y capa de datos. |
-| RTK Query | (incluido en RTK 2.12) | Cache de red, tags, `infiniteQuery` para paginado. |
-| react-redux | 9.3 | |
-| MSW | 2.15 (`msw/native` + `msw/node`) | Mock a nivel red: la app hace HTTP real y no sabe que está mockeada. |
-| TypeScript | 5.x (el del template de RN) | **No 7.0.2.** Ver ADR-002. |
-| Jest | 30 | Con el preset de React Native. |
-| @testing-library/react-native | 14 | Tests centrados en comportamiento del usuario. |
-| ESLint 10 + Prettier | | Con `@react-native/eslint-config`. |
-| husky + lint-staged | | Pre-commit. |
-| @react-native-async-storage/async-storage | | Persistencia de sesión y favoritos. Ver ADR-003. |
+| Pieza                                     | Versión                              | Justificación                                                                                                                                                  |
+| ----------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| React Native (CLI bare)                   | 0.87.1                               | Última estable. New Architecture (Fabric + TurboModules) activa por defecto. Bare, no Expo, para poder hablar del layer nativo (Podfile, Gradle, autolinking). |
+| React                                     | 19.2.3                               | Peer dependency de RN 0.87.                                                                                                                                    |
+| React Navigation                          | 7.x — `native-stack` + `bottom-tabs` | Estándar de facto. `native-stack` usa navegadores nativos (mejor performance y gestos que `stack`).                                                            |
+| Redux Toolkit                             | 2.12                                 | Estado global de la app y capa de datos.                                                                                                                       |
+| RTK Query                                 | (incluido en RTK 2.12)               | Cache de red, tags, `infiniteQuery` para paginado.                                                                                                             |
+| react-redux                               | 9.3                                  |                                                                                                                                                                |
+| MSW                                       | 2.15 (`msw/native` + `msw/node`)     | Mock a nivel red: la app hace HTTP real y no sabe que está mockeada.                                                                                           |
+| TypeScript                                | 5.x (el del template de RN)          | **No 7.0.2.** Ver ADR-002.                                                                                                                                     |
+| Jest                                      | 30                                   | Con el preset de React Native.                                                                                                                                 |
+| @testing-library/react-native             | 14                                   | Tests centrados en comportamiento del usuario.                                                                                                                 |
+| ESLint 10 + Prettier                      |                                      | Con `@react-native/eslint-config`.                                                                                                                             |
+| husky + lint-staged                       |                                      | Pre-commit.                                                                                                                                                    |
+| @react-native-async-storage/async-storage |                                      | Persistencia de sesión y favoritos. Ver ADR-003.                                                                                                               |
 
 ### Riesgo de versión
 
@@ -201,8 +201,20 @@ Tres niveles, pensados para ser recorridos en ese orden durante la entrevista.
 
 **Nivel 1 — en el código real (`ProductListScreen`).**
 `useCallback` en `renderItem` y `keyExtractor`; `useMemo` en la lista derivada
-(filtrada + ordenada); `React.memo` en `ProductCard`. El punto a explicar: `React.memo` en la fila
-es **inútil** si `renderItem` se recrea en cada render — las tres piezas solo funcionan juntas.
+(filtrada + ordenada); `React.memo` en `ProductCard`.
+
+> **Corregido el 2026-08-30 tras medirlo.** La versión original de este documento afirmaba que
+> `React.memo` en la fila es inútil si `renderItem` se recrea en cada render. Se instrumentó el
+> cuerpo de `ProductCard` y se contaron los renders: al tipear en el buscador, 10 con `useCallback`
+> en `renderItem` y 10 sin él; forzando re-renders del padre sin cambiar la data, 0 y 0. La razón es
+> que `FlatList` envuelve cada fila en un `CellRenderer` que ya es `PureComponent`: aunque cambie la
+> identidad de `renderItem`, la celda produce un elemento nuevo con las mismas props y `React.memo`
+> corta igual. Lo que sostiene la memoización es que **`onPressProduct` esté memoizado**, porque eso
+> mantiene estables las props de la fila. El `useCallback` en `renderItem` se conserva por una razón
+> más acotada: evita re-renderizar los wrappers internos de la lista, no las filas.
+
+El punto a explicar deja de ser la regla repetida y pasa a ser la medición: la memoización se
+justifica por costo medido, no por reflejo.
 
 **Nivel 2 — fuera de React (`catalog/selectors.ts`).**
 `createSelector` de Reselect. Explica memoización a nivel store y por qué un selector inline dentro
@@ -213,7 +225,7 @@ El contador de renders convierte el argumento en evidencia.
 
 **Contrapunto obligatorio.** En `ProductDetailScreen` queda deliberadamente un cálculo barato **sin**
 memoizar, con un comentario que explica por qué memoizarlo sería peor (el costo de `useMemo` supera
-al del cálculo, y agrega ruido). Saber cuándo *no* memoizar es lo que distingue una respuesta senior.
+al del cálculo, y agrega ruido). Saber cuándo _no_ memoizar es lo que distingue una respuesta senior.
 
 Además `useDebouncedValue` demuestra un custom hook con cleanup correcto de `useEffect`.
 
@@ -242,14 +254,14 @@ El día que exista un backend real, se borra la carpeta `mocks/` y no cambia nad
 
 Estrategia: **pocos tests, bien elegidos**, priorizando comportamiento sobre implementación.
 
-| Archivo | Qué cubre | Por qué |
-|---|---|---|
-| `authSlice.test.ts` | Reducers y transiciones de estado | Lógica pura, test rápido y estable |
-| `catalog/selectors.test.ts` | Memoización de `createSelector` | Verifica que **no** recalcula con la misma entrada |
-| `useDebouncedValue.test.ts` | Debounce y cleanup | `jest.useFakeTimers()` + `renderHook` |
-| `LoginScreen.test.tsx` | Validación, login exitoso, 401, error de red | Camino crítico del usuario |
-| `ProductListScreen.test.tsx` | loading → data → búsqueda → vacío → error | Test de integración real contra MSW |
-| `favoritesSlice.test.ts` | Toggle y persistencia | |
+| Archivo                      | Qué cubre                                    | Por qué                                            |
+| ---------------------------- | -------------------------------------------- | -------------------------------------------------- |
+| `authSlice.test.ts`          | Reducers y transiciones de estado            | Lógica pura, test rápido y estable                 |
+| `catalog/selectors.test.ts`  | Memoización de `createSelector`              | Verifica que **no** recalcula con la misma entrada |
+| `useDebouncedValue.test.ts`  | Debounce y cleanup                           | `jest.useFakeTimers()` + `renderHook`              |
+| `LoginScreen.test.tsx`       | Validación, login exitoso, 401, error de red | Camino crítico del usuario                         |
+| `ProductListScreen.test.tsx` | loading → data → búsqueda → vacío → error    | Test de integración real contra MSW                |
+| `favoritesSlice.test.ts`     | Toggle y persistencia                        |                                                    |
 
 - `renderWithProviders.tsx`: helper que envuelve en `Provider` de Redux con store fresco y en
   `NavigationContainer`. Evita repetir setup y es un buen ejemplo de higiene de tests.
