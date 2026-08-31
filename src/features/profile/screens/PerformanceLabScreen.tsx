@@ -1,4 +1,4 @@
-import React, {memo, useCallback, useMemo, useRef, useState} from 'react';
+import React, {memo, useCallback, useRef, useState} from 'react';
 import {ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 
 import {Screen} from '@/components/ui';
@@ -49,11 +49,12 @@ export function PerformanceLabScreen() {
   // así que re-renderiza siempre.
   const onPressPlain = (_index: number) => {};
 
-  // Columna derecha: handler estable + fila memoizada. La lista de filas también
-  // se memoiza para que su identidad no cambie.
+  // Columna derecha: handler estable + fila memoizada. Eso es todo lo que hace
+  // falta; `ROWS` es una constante de módulo y su identidad ya no puede
+  // cambiar, así que envolverla en un `useMemo` no la haría más estable —
+  // sería exactamente la memoización refleja que esta pantalla existe para
+  // desarmar.
   const onPressMemo = useCallback((_index: number) => {}, []);
-
-  const memoRows = useMemo(() => ROWS, []);
 
   return (
     <Screen>
@@ -91,7 +92,7 @@ export function PerformanceLabScreen() {
 
           <View style={styles.column}>
             <Text style={styles.columnTitle}>Memoizada</Text>
-            {memoRows.map(row => (
+            {ROWS.map(row => (
               <MemoRow
                 key={row.id}
                 index={row.id}

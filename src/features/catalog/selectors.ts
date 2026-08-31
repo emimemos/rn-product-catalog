@@ -19,10 +19,20 @@ export const selectProductsQueryArgs = createSelector(
   }),
 );
 
-export const selectHasActiveFilters = createSelector(
-  [selectCatalog],
-  catalog =>
+/**
+ * Este, en cambio, no se memoiza: devuelve un boolean, y `useSelector` compara
+ * con `===`, así que un primitivo no puede cambiar de identidad sin cambiar de
+ * valor. `createSelector` no evitaría ni un render — solo agregaría una capa de
+ * cache y una comparación de argumentos a dos comparaciones de string. El
+ * criterio es el mismo que en `services/favorites/selectors.ts`: lo que decide
+ * si memoizar no es que el selector sea derivado, sino si devuelve una
+ * referencia nueva.
+ */
+export const selectHasActiveFilters = (state: RootState): boolean => {
+  const catalog = selectCatalog(state);
+  return (
     catalog.query.trim() !== '' ||
     catalog.category !== 'all' ||
-    catalog.sort !== 'name',
-);
+    catalog.sort !== 'name'
+  );
+};

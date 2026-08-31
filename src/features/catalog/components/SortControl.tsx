@@ -1,4 +1,4 @@
-import React, {useCallback} from 'react';
+import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 
 import {useAppDispatch, useAppSelector} from '@/app/hooks';
@@ -17,11 +17,9 @@ export function SortControl() {
   const dispatch = useAppDispatch();
   const selected = useAppSelector(state => state.catalog.sort);
 
-  const onSelect = useCallback(
-    (value: SortOption) => dispatch(sortChanged(value)),
-    [dispatch],
-  );
-
+  // Handler inline y sin `useCallback`, por el mismo motivo que en
+  // `CategoryFilter`: cada chip cierra sobre su propio valor, así que la
+  // closure se recrea igual y memoizar el handler de arriba no evita nada.
   return (
     <View style={styles.row}>
       {OPTIONS.map(option => {
@@ -32,7 +30,7 @@ export function SortControl() {
             testID={`sort-${option.value}`}
             accessibilityRole="button"
             accessibilityState={{selected: active}}
-            onPress={() => onSelect(option.value)}
+            onPress={() => dispatch(sortChanged(option.value))}
             style={[styles.chip, active && styles.chipActive]}>
             <Text style={[styles.label, active && styles.labelActive]}>
               {option.label}

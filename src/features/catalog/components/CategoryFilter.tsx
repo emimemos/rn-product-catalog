@@ -1,4 +1,4 @@
-import React, {useCallback} from 'react';
+import React from 'react';
 import {Pressable, ScrollView, StyleSheet, Text} from 'react-native';
 
 import {useAppDispatch, useAppSelector} from '@/app/hooks';
@@ -23,11 +23,16 @@ export function CategoryFilter() {
   const dispatch = useAppDispatch();
   const selected = useAppSelector(state => state.catalog.category);
 
-  const onSelect = useCallback(
-    (category: Category | 'all') => dispatch(categoryChanged(category)),
-    [dispatch],
-  );
-
+  /**
+   * El handler va inline y sin `useCallback` a propósito. Cada chip necesita su
+   * propia categoría, así que `onPress` sería igual una closure nueva por
+   * render (`() => onSelect(option)`) aunque `onSelect` fuera estable: la
+   * memoización quedaría envuelta en algo no memoizado y no ahorraría un solo
+   * render. Y `Pressable` no está memoizado, así que re-renderiza con el padre
+   * de todos modos. Son seis chips sobre un dispatch; el criterio es el mismo
+   * que en `ProductDetailScreen`: se memoiza cuando hay una razón, no por
+   * reflejo.
+   */
   return (
     <ScrollView
       horizontal
@@ -41,7 +46,7 @@ export function CategoryFilter() {
             testID={`category-${option}`}
             accessibilityRole="button"
             accessibilityState={{selected: active}}
-            onPress={() => onSelect(option)}
+            onPress={() => dispatch(categoryChanged(option))}
             style={[styles.chip, active && styles.chipActive]}>
             <Text style={[styles.label, active && styles.labelActive]}>
               {LABELS[option]}
