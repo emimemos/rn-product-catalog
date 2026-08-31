@@ -42,7 +42,8 @@ module.exports = [
     },
   },
   {
-    // Regla de dependencias del spec §3.1, enforceada por el linter.
+    // Una feature no puede importar de otra feature; lo compartido sube a
+    // components/ui, services o utils. Enforceado acá, no por disciplina.
     files: ['src/features/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [

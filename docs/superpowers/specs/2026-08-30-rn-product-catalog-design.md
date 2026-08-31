@@ -1,7 +1,9 @@
 # Diseño: rn-product-catalog
 
 **Fecha:** 2026-08-30
-**Estado:** aprobado (pendiente de plan de implementación)
+**Estado:** implementado — ver docs/superpowers/plans/2026-08-30-rn-product-catalog.md. Algunas
+afirmaciones de este documento fueron revisadas durante la implementación (ver notas fechadas en
+las secciones 2, 5 y 12, y el README del repo para el detalle completo).
 **Autor:** Emiliano Martino (con Claude Code)
 
 ---
@@ -48,6 +50,11 @@ Versiones verificadas en npm el 2026-08-30.
 | ESLint 10 + Prettier                      |                                      | Con `@react-native/eslint-config`.                                                                                                                             |
 | husky + lint-staged                       |                                      | Pre-commit.                                                                                                                                                    |
 | @react-native-async-storage/async-storage |                                      | Persistencia de sesión y favoritos. Ver ADR-003.                                                                                                               |
+
+> **Corregido el 2026-08-31 tras la implementación.** El template de RN 0.87.1 pinea TypeScript
+> 6.0.3, ESLint 8.57.1 y Jest 29.7.0 en vez de TS 5.x / ESLint 10 / Jest 30. Se aceptaron esas
+> versiones en vez de forzar las de esta tabla: lo sustantivo de ADR-002 (no TypeScript 7.x) se
+> sostiene igual. Ver ADR-002 y la tabla de stack del README para el detalle.
 
 ### Riesgo de versión
 
@@ -348,6 +355,14 @@ la mejor opción si el estado global fuera mínimo.
 **ADR-005 — MSW en vez de una capa de servicios mockeada.**
 MSW intercepta a nivel red, así que el código de la app no contiene ninguna rama de mocking, y los
 mismos handlers sirven a los tests. Costo: una dependencia más y algo de configuración en RN.
+
+> **Corregido el 2026-08-31 tras la implementación.** `msw/native` fue probado, no asumido, y no
+> funciona en RN 0.87.1: su `FetchInterceptor` devuelve el body vacío contra el `fetch` nativo. En
+> los tests, `msw/node` intercepta de verdad; en dev, el entrypoint instala un shim de ~20 líneas
+> sobre `globalThis.fetch` que enruta a los mismos handlers. La propiedad que se sostiene es la que
+> importa: cero código de mocking en `src/features/` y `src/services/`, verificable con grep, y
+> borrar `src/mocks/` no toca nada más. Ver ADR-005 en el README para el detalle completo,
+> incluida la medición de bundle de producción.
 
 ---
 
