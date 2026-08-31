@@ -1,3 +1,4 @@
+import {NavigationContainer} from '@react-navigation/native';
 import {render} from '@testing-library/react-native';
 import React from 'react';
 import type {PropsWithChildren, ReactElement} from 'react';
@@ -23,7 +24,11 @@ export function renderWithProviders(
   }: ExtendedRenderOptions = {},
 ) {
   function Wrapper({children}: PropsWithChildren) {
-    return <Provider store={store}>{children}</Provider>;
+    return (
+      <Provider store={store}>
+        <NavigationContainer>{children}</NavigationContainer>
+      </Provider>
+    );
   }
 
   return {store, ...render(ui, {wrapper: Wrapper})};
