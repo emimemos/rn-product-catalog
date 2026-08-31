@@ -12,9 +12,14 @@ describe('RootNavigator', () => {
     await storage.removeItem(STORAGE_KEYS.user);
   });
 
-  it('muestra el splash antes de resolver el bootstrap', () => {
+  it('muestra el splash antes de resolver el bootstrap', async () => {
     renderWithProviders(<RootNavigator />);
     expect(screen.getByTestId('splash')).toBeVisible();
+    // Se espera a que el bootstrap asiente para que su dispatch async caiga
+    // dentro de este test: `storage.getItem` resuelve async incluso contra el
+    // mock, así que sin este await el `sessionMissing()` llega después de que
+    // el test ya terminó, fuera del `act` de React.
+    expect(await screen.findByTestId('login-submit')).toBeVisible();
   });
 
   it('lleva al login cuando no hay sesión guardada', async () => {
