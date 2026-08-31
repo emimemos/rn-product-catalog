@@ -9,22 +9,22 @@ import {API_BASE_URL} from '../config';
 import {unauthorized} from '../sessionEvents';
 
 describe('store', () => {
-  it('monta el reducer de la API bajo la clave `api`', () => {
+  it('mounts the API reducer under the `api` key', () => {
     const store = makeStore();
     expect(store.getState()).toHaveProperty(baseApi.reducerPath);
   });
 
-  it('crea stores independientes', () => {
+  it('creates independent stores', () => {
     expect(makeStore()).not.toBe(makeStore());
   });
 });
 
 /**
- * Endpoint y handler de prueba: lo que se testea acá es el wrapper del
- * `baseQuery` (header de Authorization y reacción al 401), no un endpoint real
- * de la app. Por eso tanto el endpoint como su handler viven en este archivo:
- * `src/mocks/handlers/` describe el contrato de la API de verdad y no debería
- * cargar rutas que solo existen para un test.
+ * Test endpoint and handler: what's being tested here is the `baseQuery`
+ * wrapper (the Authorization header and the reaction to a 401), not a real
+ * app endpoint. That's why both the endpoint and its handler live in this
+ * file: `src/mocks/handlers/` describes the real API contract and shouldn't
+ * carry routes that only exist for a test.
  */
 const probeApi = baseApi.injectEndpoints({
   endpoints: build => ({
@@ -40,7 +40,7 @@ function useProbeHandler(): void {
     http.get(`${API_BASE_URL}/probe-auth`, ({request}) => {
       const authorization = request.headers.get('Authorization');
       if (authorization !== `Bearer ${ACCESS_TOKEN}`) {
-        return HttpResponse.json({message: 'No autorizado'}, {status: 401});
+        return HttpResponse.json({message: 'Unauthorized'}, {status: 401});
       }
       return HttpResponse.json({authorization});
     }),
@@ -48,13 +48,13 @@ function useProbeHandler(): void {
 }
 
 /**
- * Al despachar un query, RTK Query programa —pase lo que pase, incluso con
- * `subscribe: false`— un `setTimeout` real de 500 ms para sincronizar el
- * estado de suscripciones que usan las devtools. Si el test termina antes de
- * que ese timer dispare, Jest ya desmontó el entorno de este archivo y
- * revienta con "Jest environment... torn down" (o deja el proceso colgado
- * esperando el handle). Se usan fake timers alrededor del dispatch para
- * disparar ese timer al toque en vez de esperar el reloj real.
+ * When dispatching a query, RTK Query schedules — no matter what, even with
+ * `subscribe: false` — a real 500ms `setTimeout` to sync the subscription
+ * state the devtools use. If the test ends before that timer fires, Jest has
+ * already torn down this file's environment and blows up with "Jest
+ * environment... torn down" (or leaves the process hanging waiting for the
+ * handle). Fake timers are used around the dispatch to fire that timer right
+ * away instead of waiting for the real clock.
  */
 async function dispatchAndFlush<T>(thunk: () => Promise<T>): Promise<T> {
   jest.useFakeTimers();
@@ -70,7 +70,7 @@ async function dispatchAndFlush<T>(thunk: () => Promise<T>): Promise<T> {
 describe('baseApi', () => {
   beforeEach(useProbeHandler);
 
-  it('inyecta el Authorization header desde el store', async () => {
+  it('injects the Authorization header from the store', async () => {
     const store = makeStore({
       session: {status: 'signedIn', accessToken: ACCESS_TOKEN, user: null},
     });
@@ -79,12 +79,12 @@ describe('baseApi', () => {
         probeApi.endpoints.probeAuth.initiate(undefined, {subscribe: false}),
       ),
     );
-    // El handler devuelve el header que recibió: la afirmación es sobre lo que
-    // llegó al servidor, no sobre que la request no falló.
+    // The handler returns the header it received: the assertion is about
+    // what reached the server, not about the request not having failed.
     expect(result.data?.authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
   });
 
-  it('limpia la sesión cuando la respuesta es 401', async () => {
+  it('clears the session when the response is a 401', async () => {
     const store = makeStore({
       session: {status: 'signedIn', accessToken: 'token-invalido', user: null},
     });
@@ -93,7 +93,7 @@ describe('baseApi', () => {
         probeApi.endpoints.probeAuth.initiate(undefined, {subscribe: false}),
       ),
     );
-    // `unauthorized` lo despacha el wrapper del baseQuery; el slice lo escucha.
+    // `unauthorized` is dispatched by the baseQuery wrapper; the slice listens for it.
     expect(store.getState().session.status).toBe('signedOut');
     expect(unauthorized.type).toBe('session/unauthorized');
   });

@@ -6,10 +6,10 @@ import {storage, STORAGE_KEYS} from '@/services/storage';
 import {favoriteToggled} from '../favoritesSlice';
 
 /**
- * Igual que en `sessionListeners.test.ts`: lo que se prueba acá es el efecto
- * sobre el storage, que ningún reducer toca y ningún otro test mira. Los tests
- * de borrado siembran el storage a mano para no depender del listener de
- * escritura y poder fallar por su cuenta.
+ * Same as in `sessionListeners.test.ts`: what's being tested here is the
+ * effect on storage, which no reducer touches and no other test looks at.
+ * The clearing tests seed storage by hand so they don't depend on the write
+ * listener and can fail on their own.
  */
 function settle(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 0));
@@ -24,7 +24,7 @@ describe('favoritesListeners', () => {
     await storage.removeItem(STORAGE_KEYS.favorites);
   });
 
-  it('persiste la lista de ids al marcar un favorito', async () => {
+  it('persists the id list when marking a favorite', async () => {
     const store = makeStore();
     store.dispatch(favoriteToggled('p-001'));
     store.dispatch(favoriteToggled('p-007'));
@@ -33,7 +33,7 @@ describe('favoritesListeners', () => {
     expect(await readFavorites()).toBe(JSON.stringify(['p-001', 'p-007']));
   });
 
-  it('persiste la lista sin el id al desmarcar', async () => {
+  it('persists the list without the id when unmarking', async () => {
     const store = makeStore({favorites: {ids: ['p-001', 'p-007']}});
     store.dispatch(favoriteToggled('p-001'));
     await settle();
@@ -41,7 +41,7 @@ describe('favoritesListeners', () => {
     expect(await readFavorites()).toBe(JSON.stringify(['p-007']));
   });
 
-  it('borra la lista guardada al cerrar sesión', async () => {
+  it('clears the saved list on sign out', async () => {
     await storage.setItem(STORAGE_KEYS.favorites, JSON.stringify(['p-001']));
 
     const store = makeStore({favorites: {ids: ['p-001']}});
@@ -51,7 +51,7 @@ describe('favoritesListeners', () => {
     expect(await readFavorites()).toBeNull();
   });
 
-  it('borra la lista guardada cuando la sesión caduca con un 401', async () => {
+  it('clears the saved list when the session expires with a 401', async () => {
     await storage.setItem(STORAGE_KEYS.favorites, JSON.stringify(['p-001']));
 
     const store = makeStore({favorites: {ids: ['p-001']}});

@@ -1,9 +1,9 @@
 /**
- * Host ficticio: no existe ningún servidor detrás. En los tests, msw/node
- * intercepta a nivel de red; en dev, el entrypoint de la app instala un shim
- * de fetch que enruta contra los mismos handlers. En ambos casos la app hace
- * la misma llamada a `fetch` y no sabe que está mockeada. El día que exista
- * un backend, cambia solo esta línea.
+ * Fake host: there's no server behind it. In tests, msw/node intercepts at
+ * the network level; in dev, the app's entrypoint installs a fetch shim that
+ * routes against the same handlers. In both cases the app makes the same
+ * `fetch` call and doesn't know it's mocked. The day a backend exists, only
+ * this line changes.
  */
 export const API_BASE_URL = 'http://localhost:3000/api';
 

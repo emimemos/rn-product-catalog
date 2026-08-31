@@ -8,21 +8,21 @@ import {sessionApi} from '../sessionApi';
 import {signOut} from '../sessionSlice';
 
 /**
- * Estos tests miran el storage, no el store. Los de `sessionSlice` prueban que
- * el estado en memoria queda bien; acá se prueba lo único que hace el listener
- * middleware —escribir y borrar— y que ningún reducer toca. Sin esto, vaciar
- * el cuerpo de los listeners deja la suite entera en verde aunque la sesión ya
- * no sobreviva a un reinicio de la app.
+ * These tests look at storage, not the store. `sessionSlice`'s tests prove
+ * that the in-memory state ends up right; here we test the one thing the
+ * listener middleware does — write and clear — that no reducer touches.
+ * Without this, emptying out the listeners' bodies would leave the whole
+ * suite green even though the session no longer survives an app restart.
  *
- * Cada test siembra el storage por su cuenta en vez de apoyarse en el listener
- * del test anterior: así el que prueba el borrado falla si se rompe el
- * borrado, no solo si se rompe la escritura.
+ * Each test seeds storage on its own instead of relying on the previous
+ * test's listener: that way the one testing clearing fails if clearing
+ * breaks, not only if writing breaks.
  */
 
 /**
- * Los efectos de los listeners son `async`: el dispatch vuelve antes de que
- * terminen de escribir. Un turno de macrotask alcanza para que el storage en
- * memoria del mock de AsyncStorage haya resuelto.
+ * The listeners' effects are `async`: dispatch returns before they finish
+ * writing. One macrotask turn is enough for the AsyncStorage mock's
+ * in-memory storage to have resolved.
  */
 function settle(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 0));
@@ -49,7 +49,7 @@ describe('sessionListeners', () => {
     await storage.removeItem(STORAGE_KEYS.user);
   });
 
-  it('persiste token y usuario cuando el login se resuelve', async () => {
+  it('persists the token and user when login resolves', async () => {
     const store = makeStore();
     await store.dispatch(
       sessionApi.endpoints.login.initiate({
@@ -65,7 +65,7 @@ describe('sessionListeners', () => {
     });
   });
 
-  it('borra token y usuario del storage al cerrar sesión', async () => {
+  it('clears the token and user from storage on sign out', async () => {
     await seedStoredSession();
 
     const store = makeStore();
@@ -75,12 +75,12 @@ describe('sessionListeners', () => {
     expect(await readSession()).toEqual({token: null, user: null});
   });
 
-  it('borra token y usuario del storage cuando la sesión caduca con un 401', async () => {
+  it('clears the token and user from storage when the session expires with a 401', async () => {
     await seedStoredSession();
 
-    // El 401 no pasa por el thunk de logout: lo despacha el wrapper del
-    // baseQuery. Si la limpieza del storage viviera en ese thunk, este caso
-    // dejaría la sesión anterior escrita en disco.
+    // A 401 doesn't go through the logout thunk: it's dispatched by the
+    // baseQuery wrapper. If storage cleanup lived in that thunk, this case
+    // would leave the previous session written to disk.
     const store = makeStore();
     store.dispatch(unauthorized());
     await settle();

@@ -6,10 +6,10 @@ import {storage, STORAGE_KEYS} from '@/services/storage';
 import {favoriteToggled} from './favoritesSlice';
 
 /**
- * La persistencia vive en un listener y no dentro del reducer: los reducers
- * tienen que ser puros y síncronos, y escribir en AsyncStorage no es ninguna de
- * las dos cosas. Cada servicio se ocupa de su propia clave de storage: sesión
- * borra token y usuario, favoritos borra su lista.
+ * Persistence lives in a listener and not inside the reducer: reducers have
+ * to be pure and synchronous, and writing to AsyncStorage is neither. Each
+ * service handles its own storage key: session clears the token and user,
+ * favorites clears its list.
  */
 export function registerFavoritesListeners(
   startAppListening: AppStartListening,

@@ -1,6 +1,6 @@
 import type {Storage} from './types';
 
-/** Implementación para tests: sin efectos de módulo, aislada por instancia. */
+/** Test implementation: no module-level effects, isolated per instance. */
 export function createMemoryStorage(): Storage {
   const map = new Map<string, string>();
   return {

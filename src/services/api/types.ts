@@ -14,7 +14,7 @@ export interface Product {
   id: string;
   name: string;
   description: string;
-  /** En centavos, entero. Ver src/utils/formatPrice.ts. */
+  /** In cents, integer. See src/utils/formatPrice.ts. */
   priceCents: number;
   category: Category;
   rating: number;
@@ -24,12 +24,12 @@ export interface Product {
 
 export interface ProductsPage {
   items: Product[];
-  /** `null` cuando no hay más páginas. */
+  /** `null` when there are no more pages. */
   nextCursor: string | null;
   total: number;
 }
 
-/** Argumentos de cache de la infiniteQuery de productos. */
+/** Cache arguments for the products infiniteQuery. */
 export interface ProductsQueryArgs {
   q: string;
   category: Category | 'all';

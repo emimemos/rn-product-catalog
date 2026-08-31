@@ -5,8 +5,8 @@ export {STORAGE_KEYS} from './keys';
 export type {Storage} from './types';
 
 /**
- * La implementación en memoria (`./memoryStorage`) es solo para tests y a
- * propósito no se re-exporta acá: la superficie pública de este servicio es la
- * que puede usar el código de la app.
+ * The in-memory implementation (`./memoryStorage`) is only for tests and is
+ * deliberately not re-exported here: this service's public surface is what
+ * the app's code is allowed to use.
  */
 export const storage: Storage = asyncStorage;

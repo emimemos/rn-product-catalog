@@ -9,8 +9,9 @@ import {API_BASE_URL} from './config';
 import {unauthorized} from './sessionEvents';
 
 /**
- * Se tipa solo el trozo del estado que hace falta en vez de importar RootState:
- * store.ts importa baseApi, así que importar RootState acá sería un ciclo.
+ * Only the slice of state that's needed is typed instead of importing
+ * RootState: store.ts imports baseApi, so importing RootState here would be
+ * a cycle.
  */
 interface StateWithSession {
   session: {accessToken: string | null};
@@ -40,9 +41,9 @@ const baseQueryWithAuth: BaseQueryFn<
 };
 
 /**
- * Una sola API para toda la app. Cada feature agrega sus endpoints con
- * `baseApi.injectEndpoints`, así el cache y los tags son compartidos sin que las
- * features se conozcan entre sí.
+ * A single API for the whole app. Each feature adds its endpoints with
+ * `baseApi.injectEndpoints`, so the cache and tags are shared without the
+ * features knowing about each other.
  */
 export const baseApi = createApi({
   reducerPath: 'api',

@@ -2,10 +2,11 @@ import {baseApi} from './baseApi';
 import type {Product} from './types';
 
 /**
- * `getProduct` es transversal: lo consumen el detalle (feature `catalog`) y la
- * pantalla de favoritos (feature `favorites`). Si viviera dentro de `catalogApi`,
- * favoritos tendría que importar de otra feature, que es justo lo que la regla
- * de dependencias prohíbe. Por eso el endpoint nace en la capa de API compartida.
+ * `getProduct` is cross-cutting: it's consumed by the detail screen (the
+ * `catalog` feature) and the favorites screen (the `favorites` feature). If
+ * it lived inside `catalogApi`, favorites would have to import from another
+ * feature, which is exactly what the dependency rule forbids. That's why the
+ * endpoint lives in the shared API layer instead.
  */
 export const productsApi = baseApi.injectEndpoints({
   endpoints: build => ({

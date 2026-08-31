@@ -1,9 +1,10 @@
 import {createSlice} from '@reduxjs/toolkit';
 import type {PayloadAction, ThunkAction, UnknownAction} from '@reduxjs/toolkit';
 
-// Import de tipo puro: en runtime no existe (Babel lo borra al compilar), así
-// que no arma un ciclo con app/store.ts, que sí importa este módulo en
-// runtime. Mismo truco que ya usa listenerMiddleware.ts.
+// Type-only import: it doesn't exist at runtime (Babel strips it out at
+// compile time), so it doesn't create a cycle with app/store.ts, which does
+// import this module at runtime. Same trick already used by
+// listenerMiddleware.ts.
 import type {RootState} from '@/app/store';
 import {baseApi} from '@/services/api/baseApi';
 import {unauthorized} from '@/services/api/sessionEvents';
@@ -48,11 +49,11 @@ const sessionSlice = createSlice({
   },
   extraReducers: builder => {
     builder
-      // `addCase` va antes que `addMatcher`: el builder de RTK Toolkit exige ese
-      // orden y falla en runtime si se invierte.
+      // `addCase` goes before `addMatcher`: RTK Toolkit's builder requires
+      // that order and fails at runtime if it's reversed.
       .addCase(unauthorized, clear)
-      // El login exitoso no necesita una acción propia: el slice reacciona al
-      // resultado de la mutación de RTK Query. Una sola fuente de verdad.
+      // A successful login doesn't need its own action: the slice reacts to
+      // the result of RTK Query's mutation. A single source of truth.
       .addMatcher(
         sessionApi.endpoints.login.matchFulfilled,
         (state, action) => {
@@ -69,12 +70,13 @@ export const {sessionMissing, sessionRestored, signedOut} =
 export default sessionSlice.reducer;
 
 /**
- * Antes `dispatch` venía tipado a mano como `(action: unknown) => unknown`.
- * `ThunkAction`, parametrizado con el `RootState` real de la store, tipa
- * `dispatch` dentro del thunk como la `ThunkDispatch` real de la app (la
- * misma que expone `AppDispatch`) en vez de `unknown`, y habilita que
- * `store.dispatch(restoreSession())` / `store.dispatch(signOut())` compilen
- * usando la `AppDispatch` real (`src/app/store.ts`, `src/services/session/useSession.ts`).
+ * `dispatch` used to be typed by hand as `(action: unknown) => unknown`.
+ * `ThunkAction`, parameterized with the store's real `RootState`, types
+ * `dispatch` inside the thunk as the app's real `ThunkDispatch` (the same
+ * one `AppDispatch` exposes) instead of `unknown`, and lets
+ * `store.dispatch(restoreSession())` / `store.dispatch(signOut())` compile
+ * using the real `AppDispatch` (`src/app/store.ts`,
+ * `src/services/session/useSession.ts`).
  */
 type SessionThunk = ThunkAction<
   Promise<void>,
@@ -84,9 +86,10 @@ type SessionThunk = ThunkAction<
 >;
 
 /**
- * Bootstrap de sesión. `storage` se inyecta para poder testearlo sin AsyncStorage.
- * Se escribe como thunk a mano (no createAsyncThunk) porque no hay estados
- * pending/rejected que interesen: o hay sesión o no la hay.
+ * Session bootstrap. `storage` is injected so it can be tested without
+ * AsyncStorage. It's written as a hand-rolled thunk (not createAsyncThunk)
+ * because there are no pending/rejected states worth caring about: either
+ * there's a session or there isn't.
  */
 export function restoreSession({
   storage = defaultStorage,
@@ -101,11 +104,11 @@ export function restoreSession({
         storage.getItem(STORAGE_KEYS.user),
       ]);
     } catch {
-      // Un storage roto o sin permisos no es distinto de no tener sesión
-      // guardada: no hay nada que restaurar. Si esto rechazara en cambio,
-      // el bootstrap de RootNavigator se quedaría en `bootstrapping` para
-      // siempre, con el usuario mirando el splash sin ninguna señal de qué
-      // pasó.
+      // Broken or unauthorized storage is no different from having no
+      // saved session: there's nothing to restore. If this rejected
+      // instead, RootNavigator's bootstrap would stay in `bootstrapping`
+      // forever, with the user staring at the splash with no signal of
+      // what happened.
       dispatch(sessionMissing());
       return;
     }
@@ -129,13 +132,14 @@ export function restoreSession({
 }
 
 /**
- * Logout: limpia el slice y **todo** el cache de RTK Query.
+ * Logout: clears the slice and **all** of RTK Query's cache.
  *
- * El storage no se toca acá a propósito. `signedOut` ya lo limpia por dos
- * listeners —el de sesión borra token y usuario, el de favoritos borra su
- * lista— y ese es el mismo camino que recorre un 401, que nunca pasa por este
- * thunk. Borrarlo también acá sería un segundo mecanismo para el mismo efecto,
- * que es exactamente lo que el listener middleware existe para evitar.
+ * Storage isn't touched here on purpose. `signedOut` already clears it via
+ * two listeners — the session one clears the token and user, the favorites
+ * one clears its list — and that's the same path a 401 takes, which never
+ * goes through this thunk. Clearing it here too would be a second mechanism
+ * for the same effect, which is exactly what the listener middleware exists
+ * to avoid.
  */
 export function signOut(): SessionThunk {
   return async dispatch => {

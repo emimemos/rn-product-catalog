@@ -6,9 +6,8 @@ import {sessionApi} from './sessionApi';
 import {signedOut} from './sessionSlice';
 
 /**
- * La persistencia vive en un listener y no dentro del reducer: los reducers
- * tienen que ser puros y síncronos, y escribir en AsyncStorage no es ninguna de
- * las dos cosas.
+ * Persistence lives in a listener and not inside the reducer: reducers have
+ * to be pure and synchronous, and writing to AsyncStorage is neither.
  */
 export function registerSessionListeners(
   startAppListening: AppStartListening,

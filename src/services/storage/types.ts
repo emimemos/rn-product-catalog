@@ -1,7 +1,7 @@
 /**
- * Fachada mínima sobre el almacenamiento persistente. Existe para que el
- * reemplazo de AsyncStorage por react-native-keychain sea un solo archivo
- * (ADR-003) y para poder inyectar una implementación en memoria en los tests.
+ * Minimal facade over persistent storage. It exists so that replacing
+ * AsyncStorage with react-native-keychain is a single-file change (ADR-003)
+ * and so an in-memory implementation can be injected in tests.
  */
 export interface Storage {
   getItem(key: string): Promise<string | null>;

@@ -3,16 +3,16 @@ import {makeStore} from '@/app/store';
 import {productsApi} from '../productsApi';
 
 describe('productsApi', () => {
-  it('trae un producto por id', async () => {
+  it('fetches a product by id', async () => {
     const store = makeStore();
     const result = await store.dispatch(
       productsApi.endpoints.getProduct.initiate('p-001'),
     );
     expect(result.data?.id).toBe('p-001');
-    expect(result.data?.name).toBe('Auriculares Nimbus');
+    expect(result.data?.name).toBe('Headphones Nimbus');
   });
 
-  it('expone el error cuando el producto no existe', async () => {
+  it('exposes the error when the product does not exist', async () => {
     const store = makeStore();
     const result = await store.dispatch(
       productsApi.endpoints.getProduct.initiate('no-existe'),

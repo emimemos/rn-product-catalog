@@ -15,24 +15,24 @@ import type {FavoritesState} from '../favoritesSlice';
 const empty: FavoritesState = {ids: []};
 
 describe('favoritesSlice', () => {
-  it('arranca vacío', () => {
+  it('starts empty', () => {
     expect(favoritesReducer(undefined, {type: '@@INIT'})).toEqual(empty);
   });
 
-  it('agrega un id que no estaba', () => {
+  it('adds an id that was not there', () => {
     expect(favoritesReducer(empty, favoriteToggled('p-001')).ids).toEqual([
       'p-001',
     ]);
   });
 
-  it('quita un id que ya estaba', () => {
+  it('removes an id that was already there', () => {
     const state: FavoritesState = {ids: ['p-001', 'p-002']};
     expect(favoritesReducer(state, favoriteToggled('p-001')).ids).toEqual([
       'p-002',
     ]);
   });
 
-  it('no duplica ids', () => {
+  it('does not duplicate ids', () => {
     let state = favoritesReducer(empty, favoriteToggled('p-001'));
     state = favoritesReducer(state, favoriteToggled('p-002'));
     state = favoritesReducer(state, favoriteToggled('p-001'));
@@ -40,32 +40,34 @@ describe('favoritesSlice', () => {
     expect(state.ids).toEqual(['p-002', 'p-001']);
   });
 
-  it('reemplaza la lista al restaurar', () => {
+  it('replaces the list on restore', () => {
     const state: FavoritesState = {ids: ['p-009']};
     expect(
       favoritesReducer(state, favoritesRestored(['p-001', 'p-002'])).ids,
     ).toEqual(['p-001', 'p-002']);
   });
 
-  // Los favoritos son del usuario, no del dispositivo: si no se vaciaran, el
-  // próximo que entre en el mismo teléfono vería los del anterior.
-  it('vacía la lista al cerrar sesión', () => {
+  // Favorites belong to the user, not the device: if they weren't cleared,
+  // the next person to sign in on the same phone would see the previous
+  // user's favorites.
+  it('empties the list on sign out', () => {
     const state: FavoritesState = {ids: ['p-001', 'p-002']};
     expect(favoritesReducer(state, signedOut()).ids).toEqual([]);
   });
 
-  it('vacía la lista cuando la sesión caduca con un 401', () => {
+  it('empties the list when the session expires with a 401', () => {
     const state: FavoritesState = {ids: ['p-001']};
     expect(favoritesReducer(state, unauthorized()).ids).toEqual([]);
   });
 });
 
 describe('restoreFavorites', () => {
-  // Se despacha contra una store real (como en sessionSlice.test.ts) en vez de
-  // invocar el thunk a mano con un dispatch de mentira: `restoreFavorites` está
-  // tipado con `ThunkAction`, que exige `dispatch`, `getState` y el
-  // `extraArgument` reales, y es `store.dispatch` quien los provee.
-  it('hidrata desde el storage', async () => {
+  // Dispatched against a real store (as in sessionSlice.test.ts) instead of
+  // invoking the thunk by hand with a fake dispatch: `restoreFavorites` is
+  // typed with `ThunkAction`, which requires the real `dispatch`,
+  // `getState`, and `extraArgument`, and it's `store.dispatch` that provides
+  // them.
+  it('hydrates from storage', async () => {
     const storage = createMemoryStorage();
     await storage.setItem(STORAGE_KEYS.favorites, JSON.stringify(['p-003']));
 
@@ -75,7 +77,7 @@ describe('restoreFavorites', () => {
     expect(store.getState().favorites.ids).toEqual(['p-003']);
   });
 
-  it('no rompe si el storage tiene JSON inválido', async () => {
+  it('does not break if storage has invalid JSON', async () => {
     const storage = createMemoryStorage();
     await storage.setItem(STORAGE_KEYS.favorites, 'no-es-json');
 
@@ -85,13 +87,13 @@ describe('restoreFavorites', () => {
     expect(store.getState().favorites.ids).toEqual([]);
   });
 
-  it('arranca vacío cuando falla la lectura del storage', async () => {
-    // Mismo criterio que `restoreSession`: un storage roto o sin permisos no
-    // se distingue de no tener nada guardado. Si el thunk rechazara, el
-    // bootstrap de `RootNavigator` loguearía el error y la lista quedaría sin
-    // inicializar.
+  it('starts empty when reading storage fails', async () => {
+    // Same criterion as `restoreSession`: broken or unauthorized storage is
+    // indistinguishable from having nothing saved. If the thunk rejected,
+    // RootNavigator's bootstrap would log the error and the list would stay
+    // uninitialized.
     const storage: Storage = {
-      getItem: jest.fn().mockRejectedValue(new Error('storage no disponible')),
+      getItem: jest.fn().mockRejectedValue(new Error('storage unavailable')),
       setItem: jest.fn(),
       removeItem: jest.fn(),
     };

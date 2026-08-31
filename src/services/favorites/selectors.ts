@@ -4,13 +4,14 @@ export const selectFavoriteIds = (state: RootState): string[] =>
   state.favorites.ids;
 
 /**
- * Selector con parámetro que devuelve un boolean: no se memoiza. `useSelector`
- * compara con `===` y un primitivo no cambia de identidad sin cambiar de valor,
- * así que `createSelector` no evitaría ningún render; encima, un selector
- * memoizado con parámetro necesitaría una instancia por componente para no
- * invalidarse el cache entre filas. Mismo criterio que `selectHasActiveFilters`
- * en `features/catalog/selectors.ts`, y el opuesto al de
- * `selectProductsQueryArgs`, que sí arma un objeto nuevo.
+ * A parameterized selector that returns a boolean: it isn't memoized.
+ * `useSelector` compares with `===` and a primitive can't change identity
+ * without changing value, so `createSelector` wouldn't avoid any render; on
+ * top of that, a memoized selector with a parameter would need one instance
+ * per component so the cache doesn't invalidate itself between rows. Same
+ * criterion as `selectHasActiveFilters` in `features/catalog/selectors.ts`,
+ * and the opposite of `selectProductsQueryArgs`, which does build a new
+ * object.
  */
 export const selectIsFavorite = (
   state: RootState,
