@@ -1,90 +1,90 @@
-# Diseño: rn-product-catalog
+# Design: rn-product-catalog
 
-**Fecha:** 2026-08-30
-**Estado:** implementado — ver docs/superpowers/plans/2026-08-30-rn-product-catalog.md. Algunas
-afirmaciones de este documento fueron revisadas durante la implementación (ver notas fechadas en
-las secciones 2, 5 y 12, y el README del repo para el detalle completo).
-**Autor:** Emiliano Martino (con Claude Code)
+**Date:** 2026-08-30
+**Status:** implemented — see docs/superpowers/plans/2026-08-30-rn-product-catalog.md. Some claims in
+this document were revised during implementation (see dated notes in sections 2, 5, and 12, and the
+repo's README for full detail).
+**Author:** Emiliano Martino (with Claude Code)
 
 ---
 
-## 1. Propósito
+## 1. Purpose
 
-Aplicación React Native construida como **pieza de portfolio para una entrevista técnica**. El
-objetivo no es el producto en sí, sino que cada decisión del código sea **defendible en voz alta**:
-por qué esta arquitectura, por qué esta librería, por qué esta memoización, qué tradeoff se asumió.
+React Native application built as a **portfolio piece for a technical interview**. The goal isn't
+the product itself, but that every decision in the code is **defensible out loud**: why this
+architecture, why this library, why this memoization, what tradeoff was accepted.
 
-### Criterios de éxito
+### Success criteria
 
-1. `npm run lint`, `npm run typecheck` y `npm test` pasan en verde, y CI lo demuestra públicamente.
-2. La app corre en el simulador de iOS y en Android desde un clon limpio siguiendo el README.
-3. Para cada tema esperable en una entrevista de React Native existe **un archivo concreto** que lo
-   demuestra, listado en el README.
-4. La memoización se puede **mostrar funcionando en vivo**, no solo explicar.
-5. Los tradeoffs asumidos están documentados por escrito antes de que el entrevistador los encuentre.
+1. `npm run lint`, `npm run typecheck`, and `npm test` pass green, and CI demonstrates it publicly.
+2. The app runs on the iOS simulator and on Android from a clean clone following the README.
+3. For every topic expected in a React Native interview there is **a concrete file** that
+   demonstrates it, listed in the README.
+4. Memoization can be **shown working live**, not just explained.
+5. The tradeoffs accepted are documented in writing before the interviewer finds them.
 
-### No objetivos (YAGNI)
+### Non-goals (YAGNI)
 
-- Backend real, base de datos o autenticación real.
-- Dark mode / theming dinámico, i18n, Detox E2E, animaciones complejas, push notifications.
-- Cobertura de tests del 100%. Se testea lo que tiene lógica, no los componentes de presentación.
+- A real backend, database, or real authentication.
+- Dark mode / dynamic theming, i18n, Detox E2E, complex animations, push notifications.
+- 100% test coverage. What has logic gets tested, not presentation components.
 
 ---
 
 ## 2. Stack
 
-Versiones verificadas en npm el 2026-08-30.
+Versions verified on npm on 2026-08-30.
 
-| Pieza                                     | Versión                              | Justificación                                                                                                                                                  |
-| ----------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React Native (CLI bare)                   | 0.87.1                               | Última estable. New Architecture (Fabric + TurboModules) activa por defecto. Bare, no Expo, para poder hablar del layer nativo (Podfile, Gradle, autolinking). |
-| React                                     | 19.2.3                               | Peer dependency de RN 0.87.                                                                                                                                    |
-| React Navigation                          | 7.x — `native-stack` + `bottom-tabs` | Estándar de facto. `native-stack` usa navegadores nativos (mejor performance y gestos que `stack`).                                                            |
-| Redux Toolkit                             | 2.12                                 | Estado global de la app y capa de datos.                                                                                                                       |
-| RTK Query                                 | (incluido en RTK 2.12)               | Cache de red, tags, `infiniteQuery` para paginado.                                                                                                             |
-| react-redux                               | 9.3                                  |                                                                                                                                                                |
-| MSW                                       | 2.15 (`msw/native` + `msw/node`)     | Mock a nivel red: la app hace HTTP real y no sabe que está mockeada.                                                                                           |
-| TypeScript                                | 5.x (el del template de RN)          | **No 7.0.2.** Ver ADR-002.                                                                                                                                     |
-| Jest                                      | 30                                   | Con el preset de React Native.                                                                                                                                 |
-| @testing-library/react-native             | 14                                   | Tests centrados en comportamiento del usuario.                                                                                                                 |
-| ESLint 10 + Prettier                      |                                      | Con `@react-native/eslint-config`.                                                                                                                             |
-| husky + lint-staged                       |                                      | Pre-commit.                                                                                                                                                    |
-| @react-native-async-storage/async-storage |                                      | Persistencia de sesión y favoritos. Ver ADR-003.                                                                                                               |
+| Piece                                     | Version                              | Justification                                                                                                                                                        |
+| ----------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| React Native (bare CLI)                   | 0.87.1                               | Latest stable. New Architecture (Fabric + TurboModules) active by default. Bare, not Expo, to be able to talk about the native layer (Podfile, Gradle, autolinking). |
+| React                                     | 19.2.3                               | Peer dependency of RN 0.87.                                                                                                                                          |
+| React Navigation                          | 7.x — `native-stack` + `bottom-tabs` | De facto standard. `native-stack` uses native navigators (better performance and gestures than `stack`).                                                             |
+| Redux Toolkit                             | 2.12                                 | The app's global state and data layer.                                                                                                                               |
+| RTK Query                                 | (included in RTK 2.12)               | Network cache, tags, `infiniteQuery` for pagination.                                                                                                                 |
+| react-redux                               | 9.3                                  |                                                                                                                                                                      |
+| MSW                                       | 2.15 (`msw/native` + `msw/node`)     | Network-level mocking: the app makes real HTTP calls and doesn't know it's mocked.                                                                                   |
+| TypeScript                                | 5.x (the one from the RN template)   | **Not 7.0.2.** See ADR-002.                                                                                                                                          |
+| Jest                                      | 30                                   | With the React Native preset.                                                                                                                                        |
+| @testing-library/react-native             | 14                                   | Tests focused on user behavior.                                                                                                                                      |
+| ESLint 10 + Prettier                      |                                      | With `@react-native/eslint-config`.                                                                                                                                  |
+| husky + lint-staged                       |                                      | Pre-commit.                                                                                                                                                          |
+| @react-native-async-storage/async-storage |                                      | Session and favorites persistence. See ADR-003.                                                                                                                      |
 
-> **Corregido el 2026-08-31 tras la implementación.** El template de RN 0.87.1 pinea TypeScript
-> 6.0.3, ESLint 8.57.1 y Jest 29.7.0 en vez de TS 5.x / ESLint 10 / Jest 30. Se aceptaron esas
-> versiones en vez de forzar las de esta tabla: lo sustantivo de ADR-002 (no TypeScript 7.x) se
-> sostiene igual. Ver ADR-002 y la tabla de stack del README para el detalle.
+> **Corrected on 2026-08-31 after implementation.** The RN 0.87.1 template pins TypeScript 6.0.3,
+> ESLint 8.57.1, and Jest 29.7.0 instead of TS 5.x / ESLint 10 / Jest 30. Those versions were
+> accepted instead of forcing the ones in this table: the substance of ADR-002 (not TypeScript 7.x)
+> still holds. See ADR-002 and the README's stack table for the detail.
 
-### Riesgo de versión
+### Version risk
 
-RN 0.87.1 es muy reciente. Si el build nativo falla (CocoaPods contra Xcode 26.6, o Gradle contra
-JDK 17), **el fallback es RN 0.86.3**, que no requiere ningún cambio en el código de la aplicación —
-solo se regenera el template. Esta decisión se toma en el primer paso del plan, no después.
+RN 0.87.1 is very recent. If the native build fails (CocoaPods against Xcode 26.6, or Gradle against
+JDK 17), **the fallback is RN 0.86.3**, which requires no change to the application code — only the
+template gets regenerated. This decision is made at the first step of the plan, not afterward.
 
 ---
 
-## 3. Arquitectura
+## 3. Architecture
 
-### 3.1 Organización: feature-based
+### 3.1 Organization: feature-based
 
 ```
 rn-product-catalog/
 ├── .github/workflows/ci.yml
-├── android/                      # generado por el template
-├── ios/                          # generado por el template
-├── docs/superpowers/specs/       # este documento
+├── android/                      # generated by the template
+├── ios/                          # generated by the template
+├── docs/superpowers/specs/       # this document
 ├── src/
 │   ├── app/
-│   │   ├── App.tsx               # composición de providers
-│   │   ├── store.ts              # configureStore + tipos RootState/AppDispatch
-│   │   └── hooks.ts              # useAppDispatch / useAppSelector tipados
+│   │   ├── App.tsx               # provider composition
+│   │   ├── store.ts              # configureStore + RootState/AppDispatch types
+│   │   └── hooks.ts              # typed useAppDispatch / useAppSelector
 │   ├── navigation/
-│   │   ├── RootNavigator.tsx     # decide Auth vs App según estado de sesión
+│   │   ├── RootNavigator.tsx     # decides Auth vs App based on session state
 │   │   ├── AuthNavigator.tsx
 │   │   ├── AppTabs.tsx
 │   │   ├── CatalogStack.tsx
-│   │   └── types.ts              # ParamLists + declaración global de RootParamList
+│   │   └── types.ts              # ParamLists + global RootParamList declaration
 │   ├── features/
 │   │   ├── auth/
 │   │   │   ├── authSlice.ts
@@ -94,7 +94,7 @@ rn-product-catalog/
 │   │   │   └── __tests__/
 │   │   ├── catalog/
 │   │   │   ├── catalogApi.ts
-│   │   │   ├── catalogSlice.ts   # solo UI state: query, categoría, orden
+│   │   │   ├── catalogSlice.ts   # UI state only: query, category, sort
 │   │   │   ├── selectors.ts      # createSelector
 │   │   │   ├── screens/ProductListScreen.tsx
 │   │   │   ├── screens/ProductDetailScreen.tsx
@@ -112,16 +112,16 @@ rn-product-catalog/
 │   │       └── screens/PerformanceLabScreen.tsx
 │   ├── components/ui/            # Button, TextField, Screen, EmptyState, ErrorView, Skeleton
 │   ├── services/
-│   │   ├── api/baseApi.ts        # createApi + baseQuery con auth y manejo de 401
-│   │   └── storage/              # interfaz Storage + implementación AsyncStorage
-│   ├── theme/tokens.ts           # colores, spacing, tipografía (constantes, no runtime theming)
+│   │   ├── api/baseApi.ts        # createApi + baseQuery with auth and 401 handling
+│   │   └── storage/              # Storage interface + AsyncStorage implementation
+│   ├── theme/tokens.ts           # colors, spacing, typography (constants, not runtime theming)
 │   ├── mocks/
-│   │   ├── db.ts                 # fixtures + lógica de búsqueda/filtro/paginado
+│   │   ├── db.ts                 # fixtures + search/filter/pagination logic
 │   │   ├── handlers/auth.ts
 │   │   ├── handlers/products.ts
-│   │   ├── handlers/index.ts     # compartido entre app y tests
-│   │   ├── server.native.ts      # setupServer de msw/native (solo __DEV__)
-│   │   └── server.node.ts        # setupServer de msw/node (solo tests)
+│   │   ├── handlers/index.ts     # shared between app and tests
+│   │   ├── server.native.ts      # msw/native's setupServer (__DEV__ only)
+│   │   └── server.node.ts        # msw/node's setupServer (tests only)
 │   └── test/
 │       ├── setup.ts
 │       └── renderWithProviders.tsx
@@ -129,255 +129,262 @@ rn-product-catalog/
 └── README.md
 ```
 
-**Regla de dependencias.** Una feature puede importar de `components/ui`, `services`, `theme` y
-`navigation/types`. Una feature **no** importa de otra feature: si dos necesitan lo mismo, sube a
-`components/ui` o `services`. `favorites` referencia productos solo por `id`, resolviendo los datos
-desde el cache de RTK Query, para no acoplarse a `catalog`.
+**Dependency rule.** A feature can import from `components/ui`, `services`, `theme`, and
+`navigation/types`. A feature does **not** import from another feature: if two need the same thing,
+it moves up to `components/ui` or `services`. `favorites` references products only by `id`,
+resolving the data from the RTK Query cache, so as not to couple to `catalog`.
 
-Esto responde de forma concreta a "¿cómo escala esto a 40 pantallas?".
+This gives a concrete answer to "how does this scale to 40 screens?".
 
-### 3.2 Flujo de datos
+### 3.2 Data flow
 
 ```
-Pantalla
-  → hook de RTK Query (useGetProductsInfiniteQuery)
-      → baseApi (fetchBaseQuery, inyecta Authorization desde el store)
-          → fetch nativo
-              → MSW intercepta (en dev y en tests)
-                  → mocks/db.ts aplica filtro, orden y paginado
-  ← cache normalizado por tags
-Pantalla ← useAppSelector(selector memoizado con createSelector)
+Screen
+  → RTK Query hook (useGetProductsInfiniteQuery)
+      → baseApi (fetchBaseQuery, injects Authorization from the store)
+          → native fetch
+              → MSW intercepts (in dev and in tests)
+                  → mocks/db.ts applies filter, sort, and pagination
+  ← cache normalized by tags
+Screen ← useAppSelector(selector memoized with createSelector)
 ```
 
-Separación deliberada: **RTK Query es dueño del estado del servidor** (productos, usuario);
-**los slices son dueños del estado del cliente** (sesión, query de búsqueda, categoría, favoritos).
-No se duplica la data del servidor dentro de slices. Esa distinción es en sí una respuesta de
-entrevista.
+Deliberate separation: **RTK Query owns server state** (products, user); **slices own client
+state** (session, search query, category, favorites). Server data is not duplicated inside slices.
+That distinction is itself an interview answer.
 
 ---
 
-## 4. Funcionalidad
+## 4. Functionality
 
-### 4.1 Autenticación
+### 4.1 Authentication
 
-- `LoginScreen` con email y password, validación en el submit (formato de email, password mínimo),
-  estados de loading, error de credenciales y error de red diferenciados.
-- Las credenciales de prueba se muestran en pantalla en `__DEV__` para que la demo sea inmediata.
-- `POST /api/auth/login` responde `{ accessToken, user }` o `401`.
-- El token se persiste; al arrancar, `RootNavigator` hace bootstrap (splash → Auth o App) leyendo
-  storage antes del primer render de navegación.
-- Logout limpia el token, resetea el store y **invalida el cache de RTK Query** (`api.util.resetApiState`).
+- `LoginScreen` with email and password, validation on submit (email format, minimum password),
+  loading states, and distinct credential-error and network-error states.
+- Test credentials are shown on screen in `__DEV__` so the demo is immediate.
+- `POST /api/auth/login` responds `{ accessToken, user }` or `401`.
+- The token is persisted; on startup, `RootNavigator` does a bootstrap (splash → Auth or App)
+  reading storage before the first navigation render.
+- Logout clears the token, resets the store, and **invalidates the RTK Query cache**
+  (`api.util.resetApiState`).
 
-### 4.2 Catálogo
+### 4.2 Catalog
 
-- `FlatList` de productos con:
-  - búsqueda con debounce de 300 ms (`useDebouncedValue`),
-  - filtro por categoría,
-  - orden por precio o nombre,
-  - **paginado infinito** con `infiniteQuery` de RTK Query 2.12,
+- `FlatList` of products with:
+  - search with a 300 ms debounce (`useDebouncedValue`),
+  - filter by category,
+  - sort by price or name,
+  - **infinite pagination** with RTK Query 2.12's `infiniteQuery`,
   - pull to refresh.
-- Estados explícitos: skeleton de carga, lista vacía (`EmptyState`), error con reintento (`ErrorView`).
-- `ProductCard` es `React.memo`, con `getItemLayout` y `keyExtractor` estables.
+- Explicit states: loading skeleton, empty list (`EmptyState`), error with retry (`ErrorView`).
+- `ProductCard` is `React.memo`, with stable `getItemLayout` and `keyExtractor`.
 
-### 4.3 Detalle
+### 4.3 Details
 
-- Params tipados (`ProductDetail: { productId: string }`), sin `any`.
-- Reusa el cache de RTK Query: si el producto ya está, se pinta al instante y revalida en background.
-- Toggle de favorito.
+- Typed params (`ProductDetail: { productId: string }`), no `any`.
+- Reuses the RTK Query cache: if the product is already there, it renders instantly and revalidates
+  in the background.
+- Favorite toggle.
 
-### 4.4 Favoritos
+### 4.4 Favorites
 
-- Slice persistido en AsyncStorage.
-- Resuelve los productos desde el cache; si falta alguno, lo pide por `id`.
+- Slice persisted in AsyncStorage.
+- Resolves products from the cache; if one is missing, it's requested by `id`.
 
-### 4.5 Perfil y Performance Lab
+### 4.5 Profile and Performance Lab
 
-- Perfil: datos del usuario, logout, y entrada al Performance Lab.
-- **`PerformanceLabScreen`**: dos listas equivalentes lado a lado —una sin memoizar y otra
-  memoizada— con un **contador de renders visible por fila**. Un input arriba fuerza re-renders del
-  padre. Al tipear, la lista izquierda re-renderiza todas las filas y la derecha ninguna.
+- Profile: user data, logout, and entry point to the Performance Lab.
+- **`PerformanceLabScreen`**: two equivalent lists side by side —one not memoized and one
+  memoized— with a **visible render counter per row**. An input at the top forces parent
+  re-renders. While typing, the left list re-renders every row and the right one re-renders none.
 
-  Es la pieza central de la demo: permite **mostrar** la memoización en lugar de solo describirla, y
-  abre naturalmente la conversación sobre cuándo la memoización **no** vale la pena.
-
----
-
-## 5. Demostración de useMemo / useCallback
-
-Tres niveles, pensados para ser recorridos en ese orden durante la entrevista.
-
-**Nivel 1 — en el código real (`ProductListScreen`).**
-`useCallback` en `renderItem` y `keyExtractor`; `useMemo` en la lista derivada
-(filtrada + ordenada); `React.memo` en `ProductCard`.
-
-> **Corregido el 2026-08-30 tras medirlo.** La versión original de este documento afirmaba que
-> `React.memo` en la fila es inútil si `renderItem` se recrea en cada render. Se instrumentó el
-> cuerpo de `ProductCard` y se contaron los renders: al tipear en el buscador, 10 con `useCallback`
-> en `renderItem` y 10 sin él; forzando re-renders del padre sin cambiar la data, 0 y 0. La razón es
-> que `FlatList` envuelve cada fila en un `CellRenderer` que ya es `PureComponent`: aunque cambie la
-> identidad de `renderItem`, la celda produce un elemento nuevo con las mismas props y `React.memo`
-> corta igual. Lo que sostiene la memoización es que **`onPressProduct` esté memoizado**, porque eso
-> mantiene estables las props de la fila. El `useCallback` en `renderItem` se conserva por una razón
-> más acotada: evita re-renderizar los wrappers internos de la lista, no las filas.
-
-El punto a explicar deja de ser la regla repetida y pasa a ser la medición: la memoización se
-justifica por costo medido, no por reflejo.
-
-**Nivel 2 — fuera de React (`catalog/selectors.ts`).**
-`createSelector` de Reselect. Explica memoización a nivel store y por qué un selector inline dentro
-de `useSelector` que devuelve un objeto o array nuevo dispara re-renders en cada dispatch.
-
-**Nivel 3 — medible (`PerformanceLabScreen`).**
-El contador de renders convierte el argumento en evidencia.
-
-**Contrapunto obligatorio.** En `ProductDetailScreen` queda deliberadamente un cálculo barato **sin**
-memoizar, con un comentario que explica por qué memoizarlo sería peor (el costo de `useMemo` supera
-al del cálculo, y agrega ruido). Saber cuándo _no_ memoizar es lo que distingue una respuesta senior.
-
-Además `useDebouncedValue` demuestra un custom hook con cleanup correcto de `useEffect`.
+  It's the centerpiece of the demo: it lets you **show** memoization instead of just describing it,
+  and it naturally opens the conversation about when memoization is **not** worth it.
 
 ---
 
-## 6. Backend mockeado
+## 5. useMemo / useCallback demonstration
 
-- `src/mocks/db.ts`: ~50 productos en memoria, en 5 categorías, más la lógica de búsqueda, filtro,
-  orden y paginado por cursor. Es la "base de datos".
-- `src/mocks/handlers/`: handlers de MSW. **Los mismos handlers alimentan la app en dev y los tests**
-  — una sola fuente de verdad para el contrato de la API.
-- Arranque: `msw/native` bajo `if (__DEV__)` en el entrypoint; `msw/node` en `test/setup.ts` con
+Three levels, meant to be walked through in that order during the interview.
+
+**Level 1 — in the real code (`ProductListScreen`).**
+`useCallback` on `renderItem` and `keyExtractor`; `useMemo` on the derived list (filtered + sorted);
+`React.memo` on `ProductCard`.
+
+> **Corrected on 2026-08-30 after measuring it.** The original version of this document claimed
+> that `React.memo` on the row is useless if `renderItem` is recreated on every render.
+> `ProductCard`'s body was instrumented and the renders were counted: while typing in the search
+> box, 10 with `useCallback` on `renderItem` and 10 without it; forcing parent re-renders without
+> changing the data, 0 and 0. The reason is that `FlatList` wraps each row in a `CellRenderer` that
+> is already a `PureComponent`: even if `renderItem`'s identity changes, the cell produces a new
+> element with the same props and `React.memo` still short-circuits. What actually sustains the
+> memoization is that **`onPressProduct` is memoized**, because that keeps the row's props stable.
+> The `useCallback` on `renderItem` is kept for a narrower reason: it avoids re-rendering the
+> list's internal wrappers, not the rows.
+
+The point to explain stops being the repeated rule and becomes the measurement: memoization is
+justified by measured cost, not by reflex.
+
+**Level 2 — outside React (`catalog/selectors.ts`).**
+Reselect's `createSelector`. Explains memoization at the store level and why an inline selector
+inside `useSelector` that returns a new object or array triggers re-renders on every dispatch.
+
+**Level 3 — measurable (`PerformanceLabScreen`).**
+The render counter turns the argument into evidence.
+
+**Mandatory counterpoint.** In `ProductDetailScreen` a cheap calculation is deliberately left
+**not** memoized, with a comment explaining why memoizing it would be worse (the cost of `useMemo`
+exceeds that of the calculation, and it adds noise). Knowing when _not_ to memoize is what
+distinguishes a senior answer.
+
+Also, `useDebouncedValue` demonstrates a custom hook with correct `useEffect` cleanup.
+
+---
+
+## 6. Mocked backend
+
+- `src/mocks/db.ts`: ~50 in-memory products, in 5 categories, plus the search, filter, sort, and
+  cursor pagination logic. It's the "database".
+- `src/mocks/handlers/`: MSW handlers. **The same handlers feed the app in dev and the tests** — a
+  single source of truth for the API contract.
+- Startup: `msw/native` under `if (__DEV__)` in the entrypoint; `msw/node` in `test/setup.ts` with
   `onUnhandledRequest: 'error'`.
-- Latencia artificial de 300–600 ms para que loading y skeletons sean visibles en la demo.
+- Artificial latency of 300–600 ms so loading and skeletons are visible in the demo.
 - Endpoints: `POST /api/auth/login`, `GET /api/auth/me`, `GET /api/products` (query params `q`,
   `category`, `sort`, `cursor`, `limit`), `GET /api/products/:id`.
-- **Inyección de fallos:** el query param `?fail=1` (o un toggle en el Performance Lab) fuerza un
-  500, para demostrar el manejo de errores y el reintento en vivo.
+- **Failure injection:** the `?fail=1` query param (or a toggle in the Performance Lab) forces a
+  500, to demonstrate error handling and retry live.
 
-El argumento de venta: como MSW intercepta a nivel red, **cero código de mocking vive en la app**.
-El día que exista un backend real, se borra la carpeta `mocks/` y no cambia nada más.
+The selling point: since MSW intercepts at the network level, **zero mocking code lives in the
+app**. The day a real backend exists, the `mocks/` folder gets deleted and nothing else changes.
 
 ---
 
 ## 7. Testing
 
-Estrategia: **pocos tests, bien elegidos**, priorizando comportamiento sobre implementación.
+Strategy: **few tests, well chosen**, prioritizing behavior over implementation.
 
-| Archivo                      | Qué cubre                                    | Por qué                                            |
-| ---------------------------- | -------------------------------------------- | -------------------------------------------------- |
-| `authSlice.test.ts`          | Reducers y transiciones de estado            | Lógica pura, test rápido y estable                 |
-| `catalog/selectors.test.ts`  | Memoización de `createSelector`              | Verifica que **no** recalcula con la misma entrada |
-| `useDebouncedValue.test.ts`  | Debounce y cleanup                           | `jest.useFakeTimers()` + `renderHook`              |
-| `LoginScreen.test.tsx`       | Validación, login exitoso, 401, error de red | Camino crítico del usuario                         |
-| `ProductListScreen.test.tsx` | loading → data → búsqueda → vacío → error    | Test de integración real contra MSW                |
-| `favoritesSlice.test.ts`     | Toggle y persistencia                        |                                                    |
+| File                         | What it covers                                   | Why                                                   |
+| ---------------------------- | ------------------------------------------------ | ----------------------------------------------------- |
+| `authSlice.test.ts`          | Reducers and state transitions                   | Pure logic, fast and stable test                      |
+| `catalog/selectors.test.ts`  | `createSelector` memoization                     | Verifies it **doesn't** recompute with the same input |
+| `useDebouncedValue.test.ts`  | Debounce and cleanup                             | `jest.useFakeTimers()` + `renderHook`                 |
+| `LoginScreen.test.tsx`       | Validation, successful login, 401, network error | Critical user path                                    |
+| `ProductListScreen.test.tsx` | loading → data → search → empty → error          | Real integration test against MSW                     |
+| `favoritesSlice.test.ts`     | Toggle and persistence                           |                                                       |
 
-- `renderWithProviders.tsx`: helper que envuelve en `Provider` de Redux con store fresco y en
-  `NavigationContainer`. Evita repetir setup y es un buen ejemplo de higiene de tests.
-- Sin snapshots de UI grandes: son frágiles y no prueban nada. Decisión defendible y documentada.
-- `coverageThreshold` en `jest.config.js` sobre `src/features/**` y `src/services/**`.
+- `renderWithProviders.tsx`: helper that wraps in Redux's `Provider` with a fresh store and in
+  `NavigationContainer`. Avoids repeating setup and is a good example of test hygiene.
+- No large UI snapshots: they're brittle and prove nothing. A defensible, documented decision.
+- `coverageThreshold` in `jest.config.js` over `src/features/**` and `src/services/**`.
 
 ---
 
 ## 8. Type checking
 
-- `strict: true`, más `noUncheckedIndexedAccess` y `noImplicitOverride`.
-- Path alias `@/*` → `src/*`, configurado en `tsconfig.json` **y** en `babel.config.js`
-  (`babel-plugin-module-resolver`) — ambos son necesarios y explicar por qué es una buena pregunta.
-- Navegación tipada: `RootStackParamList` y compañía, con `declare global { namespace ReactNavigation { interface RootParamList extends RootStackParamList {} } }`
-  para que `navigate()` sea type-safe en toda la app sin importar tipos.
-- Hooks de Redux tipados en `app/hooks.ts` — nunca `useSelector` crudo.
-- `npm run typecheck` = `tsc --noEmit`, y corre en CI.
-- Cero `any` en `src/`. Si hace falta, es `unknown` con narrowing.
+- `strict: true`, plus `noUncheckedIndexedAccess` and `noImplicitOverride`.
+- Path alias `@/*` → `src/*`, configured in `tsconfig.json` **and** in `babel.config.js`
+  (`babel-plugin-module-resolver`) — both are necessary, and explaining why is a good interview
+  question.
+- Typed navigation: `RootStackParamList` and friends, with
+  `declare global { namespace ReactNavigation { interface RootParamList extends RootStackParamList {} } }`
+  so that `navigate()` is type-safe throughout the app without importing types.
+- Typed Redux hooks in `app/hooks.ts` — never raw `useSelector`.
+- `npm run typecheck` = `tsc --noEmit`, and it runs in CI.
+- Zero `any` in `src/`. Where needed, it's `unknown` with narrowing.
 
 ---
 
-## 9. Linting y formato
+## 9. Linting and formatting
 
-- `@react-native/eslint-config` como base. Se usa flat config (`eslint.config.js`) si la versión del
-  paquete lo soporta; si no, `.eslintrc.js`. Se decide al scaffoldear, verificando el paquete real.
-- Prettier integrado vía `eslint-config-prettier` (Prettier formatea, ESLint no pelea).
-- `import/order` con grupos y línea en blanco entre ellos.
-- Regla `no-console` como warning, con `console.error` permitido.
-- husky + lint-staged: en pre-commit, `eslint --fix` y `prettier --write` sobre lo staged.
+- `@react-native/eslint-config` as the base. Flat config (`eslint.config.js`) is used if the
+  package version supports it; otherwise, `.eslintrc.js`. Decided at scaffold time, by checking the
+  actual package.
+- Prettier integrated via `eslint-config-prettier` (Prettier formats, ESLint doesn't fight it).
+- `import/order` with groups and a blank line between them.
+- `no-console` rule as a warning, with `console.error` allowed.
+- husky + lint-staged: on pre-commit, `eslint --fix` and `prettier --write` over the staged files.
 
 ---
 
 ## 10. CI — GitHub Actions
 
-`.github/workflows/ci.yml`, en push a `main` y en todo PR:
+`.github/workflows/ci.yml`, on push to `main` and on every PR:
 
-1. checkout, Node 20 con cache de npm
+1. checkout, Node 20 with npm cache
 2. `npm ci`
 3. `npm run lint`
 4. `npm run typecheck`
 5. `npm test -- --coverage`
 
-Sin build nativo en CI: es lento, frágil y no aporta a lo que este proyecto quiere demostrar —
-decisión documentada en el README, no una omisión. Badge de estado en el README.
+No native build in CI: it's slow, brittle, and doesn't add to what this project wants to
+demonstrate — a decision documented in the README, not an omission. Status badge in the README.
 
 ---
 
-## 11. Documentación
+## 11. Documentation
 
-**`CLAUDE.md`** — para el agente y para el lector humano: mapa de arquitectura, comandos, reglas de
-dependencias entre features, convenciones de naming, estrategia de testing, gotchas conocidos
-(MSW en RN, alias de babel, New Architecture) y las decisiones con su porqué.
+**`CLAUDE.md`** — for the agent and for the human reader: architecture map, commands, dependency
+rules between features, naming conventions, testing strategy, known gotchas (MSW on RN, babel
+alias, New Architecture), and the decisions with their reasoning.
 
-**`README.md`** — setup desde clon limpio, credenciales de prueba, capturas, y una sección
-**"Notas de entrevista"**: por cada tema (New Architecture, memoización, RTK Query vs Context,
-navegación tipada, MSW, estrategia de testing, seguridad del token, performance de listas), el
-archivo exacto donde está demostrado y la respuesta corta. Es la chuleta de repaso.
-
----
-
-## 12. Decisiones y tradeoffs (ADRs cortos)
-
-**ADR-001 — RN CLI bare en vez de Expo.**
-Expo habría sido más rápido y estable. Se eligió bare para poder hablar de autolinking, Podfile,
-Gradle y New Architecture, que es lo que suele preguntarse en entrevistas de RN. Costo aceptado:
-setup más frágil.
-
-**ADR-002 — TypeScript 5.x en vez de 7.0.2.**
-TS 7 (el port a Go) es la última versión, pero su compatibilidad con `typescript-eslint` y con los
-tipos de RN todavía no está asentada. Se prioriza un repo que compila hoy sobre uno que usa lo más
-nuevo. Se revisa cuando el ecosistema se estabilice.
-
-**ADR-003 — AsyncStorage en vez de Keychain para el token.**
-`react-native-keychain` es lo correcto en producción (Keychain en iOS, EncryptedSharedPreferences en
-Android). Se eligió AsyncStorage para minimizar dependencias nativas y reducir el riesgo de que el
-build se rompa el día de la entrevista. **El tradeoff se declara explícitamente en el README y en el
-código**, detrás de una interfaz `Storage` para que el reemplazo sea de un solo archivo.
-
-**ADR-004 — RTK Query en vez de TanStack Query.**
-Ambas son válidas. RTK Query gana acá porque el proyecto ya usa Redux Toolkit para estado de
-cliente, y una sola librería para ambas cosas es menos superficie conceptual. TanStack Query sería
-la mejor opción si el estado global fuera mínimo.
-
-**ADR-005 — MSW en vez de una capa de servicios mockeada.**
-MSW intercepta a nivel red, así que el código de la app no contiene ninguna rama de mocking, y los
-mismos handlers sirven a los tests. Costo: una dependencia más y algo de configuración en RN.
-
-> **Corregido el 2026-08-31 tras la implementación.** `msw/native` fue probado, no asumido, y no
-> funciona en RN 0.87.1: su `FetchInterceptor` devuelve el body vacío contra el `fetch` nativo. En
-> los tests, `msw/node` intercepta de verdad; en dev, el entrypoint instala un shim de ~20 líneas
-> sobre `globalThis.fetch` que enruta a los mismos handlers. La propiedad que se sostiene es la que
-> importa: cero código de mocking en `src/features/` y `src/services/`, verificable con grep, y
-> borrar `src/mocks/` no toca nada más. Ver ADR-005 en el README para el detalle completo,
-> incluida la medición de bundle de producción.
+**`README.md`** — setup from a clean clone, test credentials, screenshots, and an **"Interview
+notes"** section: for each topic (New Architecture, memoization, RTK Query vs Context, typed
+navigation, MSW, testing strategy, token security, list performance), the exact file where it's
+demonstrated and the short answer. It's the review cheat sheet.
 
 ---
 
-## 13. Orden de implementación sugerido
+## 12. Decisions and tradeoffs (short ADRs)
 
-1. Scaffolding RN 0.87.1 (con verificación de build nativo y fallback a 0.86.3), TS, alias, ESLint,
-   Prettier, husky, Jest, CI. **Verificar que lint + typecheck + test pasan en verde antes de seguir.**
-2. `services/api`, `services/storage`, `mocks/` (db + handlers + arranque en dev y tests).
-3. `components/ui` y `theme/tokens`.
-4. Auth: slice, api, `LoginScreen`, bootstrap de sesión, tests.
-5. Navegación: `RootNavigator`, tabs, stack, tipos.
-6. Catálogo: api con `infiniteQuery`, slice de UI, selectors, lista, búsqueda, filtros, tests.
-7. Detalle y favoritos.
-8. Perfil y `PerformanceLabScreen`.
-9. `CLAUDE.md` y `README.md` con las notas de entrevista.
-10. Pasada final de verificación y publicación en GitHub.
+**ADR-001 — bare RN CLI instead of Expo.**
+Expo would have been faster and more stable. Bare was chosen to be able to talk about autolinking,
+Podfile, Gradle, and New Architecture, which is what tends to get asked in RN interviews. Cost
+accepted: a more fragile setup.
 
-Cada paso se cierra con lint, typecheck y tests en verde. Nada se da por hecho sin correr el comando.
+**ADR-002 — TypeScript 5.x instead of 7.0.2.**
+TS 7 (the Go port) is the latest version, but its compatibility with `typescript-eslint` and with
+RN's types isn't settled yet. A repo that compiles today is prioritized over one that uses the
+newest thing. Revisit once the ecosystem stabilizes.
+
+**ADR-003 — AsyncStorage instead of Keychain for the token.**
+`react-native-keychain` is the right choice in production (Keychain on iOS, EncryptedSharedPreferences
+on Android). AsyncStorage was chosen to minimize native dependencies and reduce the risk of the
+build breaking on interview day. **The tradeoff is declared explicitly in the README and in the
+code**, behind a `Storage` interface so the replacement is a single-file change.
+
+**ADR-004 — RTK Query instead of TanStack Query.**
+Both are valid. RTK Query wins here because the project already uses Redux Toolkit for client
+state, and a single library for both things is less conceptual surface area. TanStack Query would
+be the better choice if global state were minimal.
+
+**ADR-005 — MSW instead of a mocked services layer.**
+MSW intercepts at the network level, so the app's code contains no mocking branches, and the same
+handlers serve the tests. Cost: one more dependency and some configuration on RN.
+
+> **Corrected on 2026-08-31 after implementation.** `msw/native` was tested, not assumed, and it
+> doesn't work on RN 0.87.1: its `FetchInterceptor` returns an empty body against the native
+> `fetch`. In tests, `msw/node` genuinely intercepts; in dev, the entrypoint installs a ~20-line
+> shim over `globalThis.fetch` that routes to the same handlers. The property that holds is the
+> one that matters: zero mocking code in `src/features/` and `src/services/`, verifiable with
+> grep, and deleting `src/mocks/` doesn't touch anything else. See ADR-005 in the README for the
+> full detail, including the production bundle measurement.
+
+---
+
+## 13. Suggested implementation order
+
+1. Scaffold RN 0.87.1 (with native build verification and fallback to 0.86.3), TS, alias, ESLint,
+   Prettier, husky, Jest, CI. **Verify that lint + typecheck + test pass green before continuing.**
+2. `services/api`, `services/storage`, `mocks/` (db + handlers + startup in dev and tests).
+3. `components/ui` and `theme/tokens`.
+4. Auth: slice, api, `LoginScreen`, session bootstrap, tests.
+5. Navigation: `RootNavigator`, tabs, stack, types.
+6. Catalog: api with `infiniteQuery`, UI slice, selectors, list, search, filters, tests.
+7. Details and favorites.
+8. Profile and `PerformanceLabScreen`.
+9. `CLAUDE.md` and `README.md` with the interview notes.
+10. Final verification pass and publish to GitHub.
+
+Each step closes with lint, typecheck, and tests green. Nothing is assumed without running the
+command.
