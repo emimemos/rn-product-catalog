@@ -45,9 +45,9 @@ export type ProfileScreenProps = NativeStackScreenProps<
 >;
 
 /**
- * Registrar el ParamList raíz a nivel global hace que `navigation.navigate()`
- * y `useNavigation()` sean type-safe en toda la app sin importar tipos en cada
- * archivo. El costo es que solo puede haber un ParamList raíz por app.
+ * Registering the root ParamList globally makes `navigation.navigate()` and
+ * `useNavigation()` type-safe throughout the app without importing types in
+ * every file. The cost is that there can only be one root ParamList per app.
  */
 declare global {
   namespace ReactNavigation {

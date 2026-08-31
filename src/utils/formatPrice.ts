@@ -1,12 +1,12 @@
 /**
- * Los precios viajan en centavos (enteros) por la API para no arrastrar errores
- * de punto flotante. El formateo a string es responsabilidad de la UI.
+ * Prices travel through the API in cents (integers) to avoid carrying
+ * floating-point errors. Formatting to a string is the UI's responsibility.
  *
- * El signo se separa antes de dividir: con `Math.trunc(-50 / 100)` la parte
- * entera es `-0`, que se imprime como `0`, y el resultado quedaba en `$0.50`
- * —el mismo string que un precio positivo—. Hoy no hay precios negativos en el
- * catálogo, pero un ajuste o un reembolso es exactamente la clase de dato que
- * aparece después y no puede perder el signo en silencio.
+ * The sign is split off before dividing: with `Math.trunc(-50 / 100)` the
+ * integer part is `-0`, which prints as `0`, and the result would come out
+ * as `$0.50` — the same string as a positive price. Today there are no
+ * negative prices in the catalog, but an adjustment or a refund is exactly
+ * the kind of data that shows up later and can't silently lose its sign.
  */
 export function formatPrice(cents: number): string {
   const sign = cents < 0 ? '-' : '';

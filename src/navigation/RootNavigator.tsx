@@ -18,26 +18,27 @@ export function RootNavigator() {
   const status = useAppSelector(state => state.session.status);
 
   useEffect(() => {
-    // `restoreSession` ya resuelve internamente cualquier caso esperado
-    // (sesión ausente, storage roto, JSON corrupto) despachando
-    // `sessionMissing`, así que en el flujo normal esta promesa no debería
-    // rechazar nunca. Este `catch` es el último recurso ante lo inesperado:
-    // se loguea en vez de tragarse el error, porque silenciarlo dejaría al
-    // usuario mirando el splash para siempre sin ninguna pista de qué pasó.
+    // `restoreSession` already internally resolves any expected case
+    // (missing session, broken storage, corrupt JSON) by dispatching
+    // `sessionMissing`, so in the normal flow this promise should never
+    // reject. This `catch` is the last resort against the unexpected: it's
+    // logged instead of swallowing the error, because silencing it would
+    // leave the user staring at the splash forever with no clue what
+    // happened.
     dispatch(restoreSession()).catch((error: unknown) => {
-      console.error('No se pudo restaurar la sesión', error);
+      console.error('Could not restore the session', error);
     });
-    // Igual que `restoreSession`, y con el mismo alcance: `restoreFavorites`
-    // resuelve internamente el storage roto y el JSON corrupto despachando
-    // `favoritesRestored([])`, así que este `catch` es solo el resguardo ante
-    // lo inesperado.
+    // Same as `restoreSession`, and with the same scope: `restoreFavorites`
+    // internally resolves broken storage and corrupt JSON by dispatching
+    // `favoritesRestored([])`, so this `catch` is only the safeguard against
+    // the unexpected.
     dispatch(restoreFavorites()).catch((error: unknown) => {
-      console.error('No se pudieron restaurar los favoritos', error);
+      console.error('Could not restore favorites', error);
     });
   }, [dispatch]);
 
-  // Splash mientras se lee el storage: montar el navegador antes de saber si hay
-  // sesión provocaría un flash de la pantalla de login en cada arranque.
+  // Splash while storage is read: mounting the navigator before knowing if
+  // there's a session would cause a flash of the login screen on every launch.
   if (status === 'bootstrapping') {
     return (
       <View testID="splash" style={styles.splash}>

@@ -1,6 +1,6 @@
 /**
- * Constantes, no theming en runtime. Soportar dark mode implicaría introducir
- * un ThemeProvider y un hook, no editar este archivo.
+ * Constants, not runtime theming. Supporting dark mode would mean
+ * introducing a ThemeProvider and a hook, not editing this file.
  */
 export const colors = {
   background: '#FFFFFF',

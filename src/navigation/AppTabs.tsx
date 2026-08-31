@@ -14,15 +14,15 @@ export function AppTabs() {
   return (
     <Tab.Navigator screenOptions={{tabBarActiveTintColor: colors.primary}}>
       {/*
-        `tabBarButtonTestID` identifica el botón del tab sin depender de texto
-        visible: los tests de navegación lo usan para confirmar que se llegó
-        a la app logueada sin acoplarse a ningún copy de producto.
+        `tabBarButtonTestID` identifies the tab button without depending on
+        visible text: navigation tests use it to confirm that the logged-in
+        app was reached without coupling to any product copy.
       */}
       <Tab.Screen
         name="CatalogTab"
         component={CatalogStack}
         options={{
-          title: 'Catálogo',
+          title: 'Catalog',
           headerShown: false,
           tabBarButtonTestID: 'catalog-tab',
         }}
@@ -30,12 +30,12 @@ export function AppTabs() {
       <Tab.Screen
         name="FavoritesTab"
         component={FavoritesScreen}
-        options={{title: 'Favoritos'}}
+        options={{title: 'Favorites'}}
       />
       <Tab.Screen
         name="ProfileTab"
         component={ProfileStack}
-        options={{title: 'Perfil', headerShown: false}}
+        options={{title: 'Profile', headerShown: false}}
       />
     </Tab.Navigator>
   );

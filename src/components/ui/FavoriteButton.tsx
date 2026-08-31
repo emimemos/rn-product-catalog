@@ -24,7 +24,7 @@ export function FavoriteButton({productId}: FavoriteButtonProps) {
       testID={`favorite-${productId}`}
       accessibilityRole="button"
       accessibilityLabel={
-        isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'
+        isFavorite ? 'Remove from favorites' : 'Add to favorites'
       }
       accessibilityState={{selected: isFavorite}}
       onPress={onPress}

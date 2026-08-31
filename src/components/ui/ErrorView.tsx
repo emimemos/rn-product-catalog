@@ -16,7 +16,7 @@ export function ErrorView({message, onRetry}: ErrorViewProps) {
       <Text style={styles.message}>{message}</Text>
       {onRetry != null && (
         <Button
-          label="Reintentar"
+          label="Retry"
           onPress={onRetry}
           variant="ghost"
           testID="retry"

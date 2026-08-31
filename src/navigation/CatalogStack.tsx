@@ -14,12 +14,12 @@ export function CatalogStack() {
       <Stack.Screen
         name="ProductList"
         component={ProductListScreen}
-        options={{title: 'Catálogo'}}
+        options={{title: 'Catalog'}}
       />
       <Stack.Screen
         name="ProductDetail"
         component={ProductDetailScreen}
-        options={{title: 'Detalle'}}
+        options={{title: 'Details'}}
       />
     </Stack.Navigator>
   );

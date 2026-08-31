@@ -35,7 +35,7 @@ export const store = makeStore();
 export type AppStore = ReturnType<typeof makeStore>;
 export type AppDispatch = AppStore['dispatch'];
 
-// El registro se hace una sola vez a nivel de módulo, no por store: queda
-// atado al middleware, que es compartido por todas las instancias de la app.
+// Registration happens once at the module level, not per store: it's tied
+// to the middleware, which is shared by every instance of the app.
 registerSessionListeners(startAppListening);
 registerFavoritesListeners(startAppListening);

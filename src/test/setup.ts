@@ -1,10 +1,10 @@
 import {server} from '@/mocks/server.node';
 
-// La v3 del paquete solo publica su mock oficial (subpath `/jest`) como ESM,
-// y `transformIgnorePatterns` no lo transforma, así que un `require` directo
-// rompe con `SyntaxError: Unexpected token 'export'`. Se reimplementa acá el
-// mismo storage en memoria que expone ese mock, con la misma interfaz
-// (`getItem`/`setItem`/`removeItem`) que usa `src/services/storage`.
+// The package's v3 only publishes its official mock (subpath `/jest`) as
+// ESM, and `transformIgnorePatterns` doesn't transform it, so a direct
+// `require` breaks with `SyntaxError: Unexpected token 'export'`. The same
+// in-memory storage that mock exposes is reimplemented here, with the same
+// interface (`getItem`/`setItem`/`removeItem`) `src/services/storage` uses.
 jest.mock('@react-native-async-storage/async-storage', () => {
   const store = new Map<string, string>();
   return {
@@ -21,10 +21,10 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
-// El mock de esta versión expone todo bajo `.default` en vez de nombrados
-// (queda como default export en vez de exports nombrados), así que hay que
-// desenvolverlo acá para que `import {SafeAreaView, ...}` siga funcionando
-// con la interop normal de Babel.
+// This version's mock exposes everything under `.default` instead of named
+// exports (it ends up as a default export instead of named ones), so it has
+// to be unwrapped here for `import {SafeAreaView, ...}` to keep working
+// with Babel's normal interop.
 jest.mock('react-native-safe-area-context', () => {
   const mock: {
     default: object;
@@ -32,23 +32,23 @@ jest.mock('react-native-safe-area-context', () => {
   return mock.default;
 });
 
-// 'error' obliga a que todo request de un test esté explícitamente mockeado:
-// un endpoint nuevo sin handler falla en vez de colgarse.
+// 'error' requires every request from a test to be explicitly mocked: a
+// new endpoint with no handler fails instead of hanging.
 beforeAll(() => server.listen({onUnhandledRequest: 'error'}));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-// El `autoBatchEnhancer` de Redux Toolkit (activado por defecto en
-// `configureStore`) agenda su notificación a los listeners con
-// `requestAnimationFrame`, y el preset de RN lo implementa como un
-// `setTimeout(fn, 0)` real. Si ese timer no llega a dispararse antes de que
-// termine el archivo de test que lo agendó, Jest ya destruyó el entorno de
-// ese archivo, y el callback revienta con "You are trying to access a
-// property or method of the Jest environment after it has been torn down" al
-// ejecutarse mientras corre el archivo siguiente. Reimplementarlo sobre un
-// microtask en vez de un macrotask hace que siempre se resuelva antes de que
-// el test que lo disparó termine, sin cambiar el comportamiento en runtime
-// (ahí sigue usándose el `requestAnimationFrame` nativo).
+// Redux Toolkit's `autoBatchEnhancer` (enabled by default in
+// `configureStore`) schedules its notification to listeners with
+// `requestAnimationFrame`, and the RN preset implements it as a real
+// `setTimeout(fn, 0)`. If that timer doesn't get to fire before the test
+// file that scheduled it finishes, Jest has already torn down that file's
+// environment, and the callback blows up with "You are trying to access a
+// property or method of the Jest environment after it has been torn down"
+// when it runs while the next file is executing. Reimplementing it on top
+// of a microtask instead of a macrotask makes it always resolve before the
+// test that triggered it finishes, without changing runtime behavior (there
+// the native `requestAnimationFrame` is still used).
 Object.defineProperty(global, 'requestAnimationFrame', {
   configurable: true,
   writable: true,

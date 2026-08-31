@@ -14,7 +14,7 @@ export function ProfileStack() {
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{title: 'Perfil'}}
+        options={{title: 'Profile'}}
       />
       <Stack.Screen
         name="PerformanceLab"

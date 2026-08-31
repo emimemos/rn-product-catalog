@@ -12,22 +12,22 @@ describe('RootNavigator', () => {
     await storage.removeItem(STORAGE_KEYS.user);
   });
 
-  it('muestra el splash antes de resolver el bootstrap', async () => {
+  it('shows the splash before the bootstrap settles', async () => {
     renderWithProviders(<RootNavigator />);
     expect(screen.getByTestId('splash')).toBeVisible();
-    // Se espera a que el bootstrap asiente para que su dispatch async caiga
-    // dentro de este test: `storage.getItem` resuelve async incluso contra el
-    // mock, así que sin este await el `sessionMissing()` llega después de que
-    // el test ya terminó, fuera del `act` de React.
+    // We wait for the bootstrap to settle so its async dispatch lands
+    // inside this test: `storage.getItem` resolves async even against the
+    // mock, so without this await the `sessionMissing()` arrives after the
+    // test has already finished, outside React's `act`.
     expect(await screen.findByTestId('login-submit')).toBeVisible();
   });
 
-  it('lleva al login cuando no hay sesión guardada', async () => {
+  it('takes you to login when there is no saved session', async () => {
     renderWithProviders(<RootNavigator />);
     expect(await screen.findByTestId('login-submit')).toBeVisible();
   });
 
-  it('entra directo a la app cuando hay sesión guardada', async () => {
+  it('goes straight into the app when there is a saved session', async () => {
     await storage.setItem(STORAGE_KEYS.accessToken, 'demo-access-token');
     await storage.setItem(
       STORAGE_KEYS.user,
@@ -35,10 +35,10 @@ describe('RootNavigator', () => {
     );
 
     renderWithProviders(<RootNavigator />);
-    // Se busca por `testID` del tab, no por el texto 'Catálogo': ese mismo
-    // texto también lo renderiza LoginScreen como branding, así que
-    // buscarlo por copy no distinguiría haber entrado a la app de haberse
-    // quedado en el login.
+    // We search by the tab's `testID`, not by the text 'Catalog': that same
+    // text is also rendered by LoginScreen as branding, so searching by copy
+    // wouldn't distinguish having entered the app from having stayed on the
+    // login screen.
     expect(await screen.findByTestId('catalog-tab')).toBeVisible();
   });
 });

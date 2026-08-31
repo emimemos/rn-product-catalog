@@ -13,8 +13,8 @@ interface ExtendedRenderOptions {
 }
 
 /**
- * Store fresco por test: el cache de RTK Query es estado global, y compartirlo
- * entre tests los vuelve dependientes del orden de ejecución.
+ * A fresh store per test: RTK Query's cache is global state, and sharing it
+ * across tests makes them dependent on execution order.
  */
 export function renderWithProviders(
   ui: ReactElement,
