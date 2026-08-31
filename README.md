@@ -70,8 +70,18 @@ lo comprobó llegando a productos "Smartwatch" muy por debajo alfabéticamente d
 "Auriculares"; y favoritos resuelve desde el cache de RTK Query, sin request nuevo, cuando el
 producto ya se vio en la lista. El gesto de pull-to-refresh se ejecutó sin errores ni cuelgues,
 pero como los datos del mock son estáticos, la captura de pantalla no puede distinguir
-visualmente un refetch exitoso de un no-op; ese camino queda cubierto por el test de integración
-de `ProductListScreen`, que sí puede afirmar sobre el número de requests.
+visualmente un refetch exitoso de un no-op.
+
+Esa es justamente la clase de afirmación que una captura no puede sostener y un test sí, así que
+las tres interacciones de la lista se prueban contando requests, no mirando píxeles
+(`ProductListScreen.test.tsx`, bloque "requests que dispara cada interacción"): el conteo sale
+del stream de eventos de msw, contra los mismos handlers que sirven al resto de la suite.
+Pull-to-refresh dispara exactamente una request más y con la misma URL —un refetch, no una
+página nueva—; el botón de reintento tras un 500 vuelve a pedir y pinta la lista; llegar al final
+pide la página siguiente con `cursor=p-010`, el id de la última fila visible, y la lista pasa de
+10 a 20 items; y con un filtro cuyo resultado entra en una sola página, llegar al final no
+dispara nada. Las tres primeras fallan si se vacía el handler que les corresponde — se comprobó
+mutándolos.
 
 ## Notas de entrevista
 
@@ -95,7 +105,7 @@ Cada fila apunta a un archivo real del repo.
 | Favoritos por id                   | `src/services/favorites/selectors.ts`, `src/services/favorites/favoritesSlice.ts` | Se persiste solo una lista de ids, no los productos. Verificado en vivo: un producto ya visto en el catálogo (y por lo tanto en el cache de RTK Query) aparece en Favoritos sin disparar ningún request nuevo; un id sin ese producto en cache sí dispara uno.                                                                                                                                                                                                                                                                                                                               |
 | MSW                                | `src/mocks/`                                                                      | Los mismos handlers alimentan tests y dev: una sola fuente de verdad para el contrato de la API. Cómo llega ese contrato a la app en cada entorno cambió durante la implementación — ver ADR-005.                                                                                                                                                                                                                                                                                                                                                                                            |
 | Performance de listas              | `src/features/catalog/components/ProductCard.tsx`                                 | `getItemLayout` con altura fija (sin medir cada fila, scroll a índice es O(1)), `keyExtractor` estable, fila envuelta en `React.memo`.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Estrategia de testing              | `src/features/catalog/__tests__/ProductListScreen.test.tsx`                       | Integración real contra MSW — sin mockear el store ni la red a mano — cubriendo loading → datos → búsqueda → vacío → error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Estrategia de testing              | `src/features/catalog/__tests__/ProductListScreen.test.tsx`                       | Integración real contra MSW — sin mockear el store ni la red a mano — cubriendo loading → datos → búsqueda → vacío → error → reintento, más pull-to-refresh y scroll infinito verificados por número de requests.                                                                                                                                                                                                                                                                                                                                                                            |
 | Escala a muchas pantallas          | `eslint.config.js`                                                                | Las reglas "una feature no importa de otra feature" y "`services/` no importa de `features/`" están enforceadas por `import/no-restricted-paths`, que resuelve cada import a un archivo antes de compararlo, así que el alias y la ruta relativa fallan igual. No es disciplina de code review.                                                                                                                                                                                                                                                                                              |
 
 ## ADRs

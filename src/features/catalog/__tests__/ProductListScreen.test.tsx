@@ -6,6 +6,7 @@ import {server} from '@/mocks/server.node';
 import {API_BASE_URL} from '@/services/api/config';
 import {renderWithProviders} from '@/test/renderWithProviders';
 
+import {catalogApi} from '../catalogApi';
 import {SEARCH_DEBOUNCE_MS} from '../components/SearchBar';
 import {ProductListScreen} from '../screens/ProductListScreen';
 
@@ -37,6 +38,13 @@ async function waitOutDebounce() {
 }
 
 const navigation = {navigate: jest.fn()};
+
+/** Los argumentos con los que el catálogo arranca, sin filtros ni búsqueda. */
+const selectDefaultPage = catalogApi.endpoints.getProducts.select({
+  q: '',
+  category: 'all',
+  sort: 'name',
+});
 
 function renderScreen() {
   return renderWithProviders(
@@ -111,5 +119,124 @@ describe('ProductListScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('ProductDetail', {
       productId: 'p-005',
     });
+  });
+});
+
+/**
+ * Las tres interacciones de la lista —pull-to-refresh, reintento tras error y
+ * scroll infinito— no se distinguen mirando la pantalla: con datos de mock
+ * estáticos, un refetch exitoso pinta exactamente lo mismo que un no-op. Lo
+ * que sí las distingue es cuántas requests salieron y con qué parámetros, y
+ * eso es lo que se afirma acá.
+ *
+ * El conteo se toma del stream de eventos de msw en vez de reemplazar el
+ * handler por un espía: así se cuentan las requests que realmente salieron por
+ * la red interceptada, contra los mismos handlers que sirven al resto de la
+ * suite y a la app en dev.
+ */
+describe('ProductListScreen — requests que dispara cada interacción', () => {
+  const requests: string[] = [];
+
+  beforeEach(() => {
+    requests.length = 0;
+    server.events.on('request:start', ({request}) => {
+      const url = new URL(request.url);
+      if (url.pathname.endsWith('/products')) {
+        requests.push(request.url);
+      }
+    });
+  });
+
+  afterEach(() => {
+    server.events.removeAllListeners();
+    jest.clearAllMocks();
+  });
+
+  /**
+   * `FlatList` reprograma su ventana de celdas con un batcher de ~50 ms cuando
+   * cambia la cantidad de items. Se lo espera dentro de `act` en vez de dejar
+   * que dispare después del test: si no, la actualización cae fuera del `act`
+   * de este test y React avisa desde el archivo siguiente.
+   */
+  async function settleList(): Promise<void> {
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
+  }
+
+  it('pull-to-refresh dispara exactamente una request más, con los mismos parámetros', async () => {
+    renderScreen();
+    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(requests).toHaveLength(1);
+
+    fireEvent(screen.getByTestId('product-list'), 'refresh');
+
+    await waitFor(() => expect(requests).toHaveLength(2));
+    // Un refetch, no una página nueva: misma URL, sin cursor.
+    expect(requests[1]).toBe(requests[0]);
+    expect(screen.getByText('Auriculares Atlas')).toBeVisible();
+    await settleList();
+  });
+
+  it('el reintento tras un error vuelve a pedir y pinta la lista', async () => {
+    server.use(
+      http.get(`${API_BASE_URL}/products`, () =>
+        HttpResponse.json({message: 'Boom'}, {status: 500}),
+      ),
+    );
+    renderScreen();
+    expect(await screen.findByTestId('retry')).toBeVisible();
+    expect(requests).toHaveLength(1);
+
+    // Se restauran los handlers por defecto para que el reintento encuentre
+    // una API sana: lo que se prueba es que el botón vuelve a pedir, no que la
+    // API siga rota.
+    server.resetHandlers();
+    fireEvent.press(screen.getByTestId('retry'));
+
+    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(requests).toHaveLength(2);
+    await settleList();
+  });
+
+  it('llegar al final de la lista pide la página siguiente con el cursor de la última fila', async () => {
+    const {store} = renderScreen();
+    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).not.toContain('cursor=');
+
+    fireEvent(screen.getByTestId('product-list'), 'endReached');
+
+    await waitFor(() =>
+      expect(selectDefaultPage(store.getState()).data?.pages).toHaveLength(2),
+    );
+    expect(requests).toHaveLength(2);
+    // `p-010` es el último producto de la primera página con el orden por
+    // nombre: el cursor sale de los datos, no de un contador de páginas.
+    expect(requests[1]).toContain('cursor=p-010');
+
+    const list = screen.getByTestId('product-list');
+    expect((list.props as {data: unknown[]}).data).toHaveLength(20);
+    await settleList();
+  });
+
+  it('no pide nada más cuando ya no quedan páginas', async () => {
+    // La categoría `audio` tiene exactamente 10 productos, que es el tamaño de
+    // página: la primera respuesta ya viene sin `nextCursor`, así que
+    // `hasNextPage` es false y el handler de scroll tiene que cortar solo.
+    renderWithProviders(
+      <ProductListScreen
+        navigation={navigation as never}
+        route={{key: 'k', name: 'ProductList'} as never}
+      />,
+      {preloadedState: {catalog: {query: '', category: 'audio', sort: 'name'}}},
+    );
+    expect(await screen.findByText('Auriculares Atlas')).toBeVisible();
+    expect(requests).toHaveLength(1);
+
+    fireEvent(screen.getByTestId('product-list'), 'endReached');
+    await settleList();
+
+    expect(requests).toHaveLength(1);
   });
 });
