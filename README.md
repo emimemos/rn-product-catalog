@@ -1,7 +1,6 @@
 # rn-product-catalog
 
-<!-- El badge de CI se agrega con el primer push, cuando el workflow tenga una corrida real:
-![CI](https://github.com/emilianodevborn/rn-product-catalog/actions/workflows/ci.yml/badge.svg) -->
+[![CI](https://github.com/emimemos/rn-product-catalog/actions/workflows/ci.yml/badge.svg)](https://github.com/emimemos/rn-product-catalog/actions/workflows/ci.yml)
 
 ## Qué es
 
@@ -34,8 +33,8 @@ npm run ios       # o: npm run android
 
 `npm run lint`, `npm run typecheck` y `npm test -- --coverage` son los tres comandos que corre
 `.github/workflows/ci.yml`, en Node 22; deberían pasar en verde sin ningún paso manual además de
-los de arriba. Ese workflow todavía no se ejecutó nunca: el repo no tiene remoto configurado, así
-que la primera corrida será la del primer push.
+los de arriba. El badge de arriba refleja
+el estado de la última corrida.
 
 **Solo iOS fue verificado corriendo nativamente en esta máquina** (no hay `ANDROID_HOME`
 configurado). El código de Android no tiene ninguna rama distinta de la de iOS — mismo JS, mismo
