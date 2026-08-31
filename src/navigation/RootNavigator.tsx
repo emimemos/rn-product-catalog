@@ -27,9 +27,10 @@ export function RootNavigator() {
     dispatch(restoreSession()).catch((error: unknown) => {
       console.error('No se pudo restaurar la sesión', error);
     });
-    // Igual que `restoreSession`: `restoreFavorites` ya resuelve internamente
-    // cualquier caso esperado despachando `favoritesRestored([])`, así que
-    // este `catch` es solo el resguardo ante lo inesperado.
+    // Igual que `restoreSession`, y con el mismo alcance: `restoreFavorites`
+    // resuelve internamente el storage roto y el JSON corrupto despachando
+    // `favoritesRestored([])`, así que este `catch` es solo el resguardo ante
+    // lo inesperado.
     dispatch(restoreFavorites()).catch((error: unknown) => {
       console.error('No se pudieron restaurar los favoritos', error);
     });

@@ -5,6 +5,8 @@ import type {PayloadAction, ThunkAction, UnknownAction} from '@reduxjs/toolkit';
 // que no arma un ciclo con app/store.ts, que sí importa este módulo en
 // runtime. Mismo truco que ya usa sessionSlice.ts y listenerMiddleware.ts.
 import type {RootState} from '@/app/store';
+import {unauthorized} from '@/services/api/sessionEvents';
+import {signedOut} from '@/services/session';
 import {storage as defaultStorage, STORAGE_KEYS} from '@/services/storage';
 import type {Storage} from '@/services/storage';
 
@@ -30,6 +32,17 @@ const favoritesSlice = createSlice({
     favoritesRestored(state, action: PayloadAction<string[]>) {
       state.ids = action.payload;
     },
+  },
+  /**
+   * Los favoritos son del usuario, no del dispositivo: cerrar sesión —o que la
+   * sesión caduque con un 401— los vacía, para que quien entre después no
+   * herede los del anterior. El borrado del storage es el efecto secundario
+   * espejo y vive en `favoritesListeners`, no acá: el reducer sigue puro.
+   */
+  extraReducers: builder => {
+    builder
+      .addCase(signedOut, () => initialState)
+      .addCase(unauthorized, () => initialState);
   },
 });
 
@@ -57,11 +70,24 @@ export function restoreFavorites({
   storage = defaultStorage,
 }: {storage?: Storage} = {}): FavoritesThunk {
   return async dispatch => {
-    const raw = await storage.getItem(STORAGE_KEYS.favorites);
+    let raw: string | null;
+
+    try {
+      raw = await storage.getItem(STORAGE_KEYS.favorites);
+    } catch {
+      // Mismo criterio que `restoreSession`: un storage roto o sin permisos no
+      // se distingue de no tener nada guardado. Si esto rechazara, el
+      // `.catch` de RootNavigator loguearía el error y la lista de favoritos
+      // se quedaría sin inicializar en vez de arrancar vacía.
+      dispatch(favoritesRestored([]));
+      return;
+    }
+
     if (raw == null) {
       dispatch(favoritesRestored([]));
       return;
     }
+
     try {
       const parsed: unknown = JSON.parse(raw);
       const ids = Array.isArray(parsed)

@@ -128,15 +128,17 @@ export function restoreSession({
   };
 }
 
-/** Logout: limpia el slice, el storage y **todo** el cache de RTK Query. */
-export function signOut({
-  storage = defaultStorage,
-}: {storage?: Storage} = {}): SessionThunk {
+/**
+ * Logout: limpia el slice y **todo** el cache de RTK Query.
+ *
+ * El storage no se toca acá a propósito. `signedOut` ya lo limpia por dos
+ * listeners —el de sesión borra token y usuario, el de favoritos borra su
+ * lista— y ese es el mismo camino que recorre un 401, que nunca pasa por este
+ * thunk. Borrarlo también acá sería un segundo mecanismo para el mismo efecto,
+ * que es exactamente lo que el listener middleware existe para evitar.
+ */
+export function signOut(): SessionThunk {
   return async dispatch => {
-    await Promise.all([
-      storage.removeItem(STORAGE_KEYS.accessToken),
-      storage.removeItem(STORAGE_KEYS.user),
-    ]);
     dispatch(signedOut());
     dispatch(baseApi.util.resetApiState());
   };

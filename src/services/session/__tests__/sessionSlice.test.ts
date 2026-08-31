@@ -1,8 +1,9 @@
 import {makeStore} from '@/app/store';
 import {unauthorized} from '@/services/api/sessionEvents';
 import type {User} from '@/services/api/types';
-import {createMemoryStorage, STORAGE_KEYS} from '@/services/storage';
+import {STORAGE_KEYS} from '@/services/storage';
 import type {Storage} from '@/services/storage';
+import {createMemoryStorage} from '@/services/storage/memoryStorage';
 
 import sessionReducer, {
   restoreSession,
