@@ -40,7 +40,7 @@ describe('LoginScreen', () => {
 
   it('shows an invalid credentials message on a 401', async () => {
     renderWithProviders(<LoginScreen />);
-    fillAndSubmit('demo@catalog.dev', 'incorrecta1');
+    fillAndSubmit('demo@catalog.dev', 'wrongpass1');
     expect(await screen.findByTestId('login-error')).toHaveTextContent(
       'Incorrect email or password',
     );

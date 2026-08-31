@@ -79,7 +79,7 @@ describe('restoreFavorites', () => {
 
   it('does not break if storage has invalid JSON', async () => {
     const storage = createMemoryStorage();
-    await storage.setItem(STORAGE_KEYS.favorites, 'no-es-json');
+    await storage.setItem(STORAGE_KEYS.favorites, 'not-json');
 
     const store = makeStore();
     await store.dispatch(restoreFavorites({storage}));

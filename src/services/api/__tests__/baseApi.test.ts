@@ -86,7 +86,7 @@ describe('baseApi', () => {
 
   it('clears the session when the response is a 401', async () => {
     const store = makeStore({
-      session: {status: 'signedIn', accessToken: 'token-invalido', user: null},
+      session: {status: 'signedIn', accessToken: 'invalid-token', user: null},
     });
     await dispatchAndFlush(() =>
       store.dispatch(

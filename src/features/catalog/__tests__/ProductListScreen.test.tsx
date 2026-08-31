@@ -100,7 +100,7 @@ describe('ProductListScreen', () => {
       expect(screen.getByTestId('product-list')).toBeVisible(),
     );
 
-    fireEvent.changeText(screen.getByTestId('search-input'), 'zzzznoexiste');
+    fireEvent.changeText(screen.getByTestId('search-input'), 'zzzznomatch');
     await waitOutDebounce();
 
     expect(await screen.findByText('No results')).toBeVisible();

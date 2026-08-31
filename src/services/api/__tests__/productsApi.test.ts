@@ -15,7 +15,7 @@ describe('productsApi', () => {
   it('exposes the error when the product does not exist', async () => {
     const store = makeStore();
     const result = await store.dispatch(
-      productsApi.endpoints.getProduct.initiate('no-existe'),
+      productsApi.endpoints.getProduct.initiate('does-not-exist'),
     );
     expect(result.error).toBeDefined();
   });

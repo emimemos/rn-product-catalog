@@ -59,7 +59,7 @@ describe('queryProducts', () => {
   });
 
   it('returns an empty page when there are no matches', () => {
-    const page = queryProducts({q: 'zzzznoexiste', limit: 50});
+    const page = queryProducts({q: 'zzzznomatch', limit: 50});
     expect(page.items).toEqual([]);
     expect(page.total).toBe(0);
     expect(page.nextCursor).toBeNull();
@@ -106,6 +106,6 @@ describe('findProduct', () => {
   });
 
   it('returns undefined for a nonexistent id', () => {
-    expect(findProduct('no-existe')).toBeUndefined();
+    expect(findProduct('does-not-exist')).toBeUndefined();
   });
 });

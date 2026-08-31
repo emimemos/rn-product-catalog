@@ -14,7 +14,7 @@ describe('selectProductsQueryArgs', () => {
   it('keeps returning the same reference after a dispatch that does not touch the catalog', () => {
     const store = makeStore();
     const first = selectProductsQueryArgs(store.getState());
-    store.dispatch({type: 'ruido/irrelevante'});
+    store.dispatch({type: 'noise/irrelevant'});
     expect(selectProductsQueryArgs(store.getState())).toBe(first);
   });
 

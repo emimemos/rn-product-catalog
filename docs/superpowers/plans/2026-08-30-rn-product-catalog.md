@@ -820,7 +820,7 @@ describe('queryProducts', () => {
   });
 
   it('returns an empty page when there are no matches', () => {
-    const page = queryProducts({q: 'zzzznoexiste', limit: 50});
+    const page = queryProducts({q: 'zzzznomatch', limit: 50});
     expect(page.items).toEqual([]);
     expect(page.total).toBe(0);
     expect(page.nextCursor).toBeNull();
@@ -865,7 +865,7 @@ describe('findProduct', () => {
   });
 
   it('returns undefined for a nonexistent id', () => {
-    expect(findProduct('no-existe')).toBeUndefined();
+    expect(findProduct('does-not-exist')).toBeUndefined();
   });
 });
 ```
@@ -2609,7 +2609,7 @@ describe('baseApi', () => {
 
   it('clears the session when the response is 401', async () => {
     const store = makeStore({
-      session: {status: 'signedIn', accessToken: 'token-invalido', user: null},
+      session: {status: 'signedIn', accessToken: 'invalid-token', user: null},
     });
     await store.dispatch(probeApi.endpoints.probeMe.initiate());
     // `unauthorized` is dispatched by the baseQuery wrapper; the slice listens for it.
@@ -2693,7 +2693,7 @@ describe('LoginScreen', () => {
 
   it('shows an invalid credentials message on a 401', async () => {
     renderWithProviders(<LoginScreen />);
-    fillAndSubmit('demo@catalog.dev', 'incorrecta1');
+    fillAndSubmit('demo@catalog.dev', 'wrongpass1');
     expect(await screen.findByTestId('login-error')).toHaveTextContent(
       'Incorrect email or password',
     );
@@ -3399,7 +3399,7 @@ describe('selectProductsQueryArgs', () => {
   it('keeps returning the same reference after a dispatch that does not touch the catalog', () => {
     const store = makeStore();
     const first = selectProductsQueryArgs(store.getState());
-    store.dispatch({type: 'ruido/irrelevante'});
+    store.dispatch({type: 'noise/irrelevant'});
     expect(selectProductsQueryArgs(store.getState())).toBe(first);
   });
 
@@ -3596,7 +3596,7 @@ describe('productsApi', () => {
   it('exposes the error when the product does not exist', async () => {
     const store = makeStore();
     const result = await store.dispatch(
-      productsApi.endpoints.getProduct.initiate('no-existe'),
+      productsApi.endpoints.getProduct.initiate('does-not-exist'),
     );
     expect(result.error).toBeDefined();
   });
@@ -4133,7 +4133,7 @@ describe('ProductListScreen', () => {
       expect(screen.getByTestId('product-list')).toBeVisible(),
     );
 
-    fireEvent.changeText(screen.getByTestId('search-input'), 'zzzznoexiste');
+    fireEvent.changeText(screen.getByTestId('search-input'), 'zzzznomatch');
     act(() => {
       jest.advanceTimersByTime(300);
     });
@@ -4528,7 +4528,7 @@ describe('restoreFavorites', () => {
 
   it('does not break if storage has invalid JSON', async () => {
     const storage = createMemoryStorage();
-    await storage.setItem(STORAGE_KEYS.favorites, 'no-es-json');
+    await storage.setItem(STORAGE_KEYS.favorites, 'not-json');
 
     const dispatched: unknown[] = [];
     await restoreFavorites({storage})(action => {
