@@ -11,10 +11,15 @@ export type CatalogStackParamList = {
   ProductDetail: {productId: string};
 };
 
+export type ProfileStackParamList = {
+  Profile: undefined;
+  PerformanceLab: undefined;
+};
+
 export type AppTabParamList = {
   CatalogTab: NavigatorScreenParams<CatalogStackParamList>;
   FavoritesTab: undefined;
-  ProfileTab: undefined;
+  ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
 };
 
 export type RootStackParamList = {
@@ -33,6 +38,10 @@ export type ProductDetailScreenProps = NativeStackScreenProps<
 export type FavoritesScreenProps = BottomTabScreenProps<
   AppTabParamList,
   'FavoritesTab'
+>;
+export type ProfileScreenProps = NativeStackScreenProps<
+  ProfileStackParamList,
+  'Profile'
 >;
 
 /**

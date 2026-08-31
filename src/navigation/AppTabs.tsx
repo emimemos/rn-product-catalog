@@ -2,10 +2,10 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import React from 'react';
 
 import {FavoritesScreen} from '@/features/favorites/screens/FavoritesScreen';
-import {ProfileScreen} from '@/features/profile/screens/ProfileScreen';
 import {colors} from '@/theme/tokens';
 
 import {CatalogStack} from './CatalogStack';
+import {ProfileStack} from './ProfileStack';
 import type {AppTabParamList} from './types';
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
@@ -34,8 +34,8 @@ export function AppTabs() {
       />
       <Tab.Screen
         name="ProfileTab"
-        component={ProfileScreen}
-        options={{title: 'Perfil'}}
+        component={ProfileStack}
+        options={{title: 'Perfil', headerShown: false}}
       />
     </Tab.Navigator>
   );
