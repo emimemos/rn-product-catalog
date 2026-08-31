@@ -3,6 +3,7 @@ import React, {useEffect} from 'react';
 import {ActivityIndicator, StyleSheet, View} from 'react-native';
 
 import {useAppDispatch, useAppSelector} from '@/app/hooks';
+import {restoreFavorites} from '@/services/favorites';
 import {restoreSession} from '@/services/session';
 import {colors} from '@/theme/tokens';
 
@@ -25,6 +26,12 @@ export function RootNavigator() {
     // usuario mirando el splash para siempre sin ninguna pista de qué pasó.
     dispatch(restoreSession()).catch((error: unknown) => {
       console.error('No se pudo restaurar la sesión', error);
+    });
+    // Igual que `restoreSession`: `restoreFavorites` ya resuelve internamente
+    // cualquier caso esperado despachando `favoritesRestored([])`, así que
+    // este `catch` es solo el resguardo ante lo inesperado.
+    dispatch(restoreFavorites()).catch((error: unknown) => {
+      console.error('No se pudieron restaurar los favoritos', error);
     });
   }, [dispatch]);
 
