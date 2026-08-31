@@ -19,7 +19,7 @@ A single test, by file or by name:
 
 ```bash
 npx jest src/features/catalog/__tests__/ProductListScreen.test.tsx
-npx jest -t "shows the error state"
+npx jest -t "shows the error with retry when the API fails"
 ```
 
 Coverage (uses the `coverageThreshold` from `jest.config.js`):

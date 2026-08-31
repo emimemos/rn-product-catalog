@@ -68,7 +68,7 @@ receives stable props. Verified live on the simulator, not just in the screen's 
 
 It was also verified on the simulator, in addition to in the tests: the catalog loads showing its
 skeleton before it has data; search filters the list keystroke by keystroke with debounce (typing
-"atlas" leaves only "Headphones Atlas", "Gamepad Atlas", and "Lamp Atlas" visible); scrolling to
+"atlas" narrows the catalog to the five "... Atlas" products, one per category); scrolling to
 the end of the list brings in more pages — the full catalog exceeds a single page, and this was
 confirmed by reaching "Smartwatch" products far below alphabetically from the first "Gamepad"
 ones; and favorites resolves from the RTK Query cache, with no new request, when the product was
