@@ -37,6 +37,7 @@ export function CategoryFilter() {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.scroll}
       contentContainerStyle={styles.row}>
       {OPTIONS.map(option => {
         const active = option === selected;
@@ -59,13 +60,26 @@ export function CategoryFilter() {
 }
 
 const styles = StyleSheet.create({
+  /**
+   * `ScrollView` defaults to `flexGrow: 1, flexShrink: 1` on its outer
+   * element, meant for a scroll view that fills its parent. Left unset here,
+   * this chip strip is the only flexible sibling in the column whenever the
+   * one below it (`ProductListSkeleton`, a plain `View`) doesn't opt into
+   * shrinking either: the header's content overflows the fixed-height
+   * screen, and this is the only child Yoga can shrink to make it fit —
+   * collapsing the chips to zero height. Sizing to content, like a normal
+   * `View`, removes it from that competition.
+   */
+  scroll: {flexGrow: 0, flexShrink: 0},
   row: {
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   chip: {
-    paddingVertical: spacing.xs,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
     borderRadius: radius.full,
     backgroundColor: colors.surface,

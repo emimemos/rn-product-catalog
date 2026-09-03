@@ -32,6 +32,16 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
   } = useGetProductsInfiniteQuery(queryArgs);
 
   /**
+   * `isLoading` only covers the very first request this hook ever makes.
+   * Switching filters queries a new cache key that starts with no data of
+   * its own, but RTK Query reports that transition as `isFetching` with
+   * `isLoading: false` — so `isLoading` alone misses it, and without this
+   * check the screen fell through to the empty `FlatList` (spinner +
+   * "No results") while the new page was still in flight.
+   */
+  const showSkeleton = isLoading || (isFetching && currentData == null);
+
+  /**
    * Flattening the pages is O(n) over `currentData.pages`. `useMemo` with
    * `currentData?.pages` as the dependency (not `currentData`) avoids
    * repeating that work on renders where the data didn't change — for
@@ -120,7 +130,7 @@ export function ProductListScreen({navigation}: ProductListScreenProps) {
   return (
     <Screen>
       {header}
-      {isLoading ? (
+      {showSkeleton ? (
         <ProductListSkeleton />
       ) : (
         <FlatList

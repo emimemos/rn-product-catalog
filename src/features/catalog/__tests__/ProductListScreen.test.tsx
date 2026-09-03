@@ -77,6 +77,26 @@ describe('ProductListScreen', () => {
     expect(screen.queryByTestId('list-skeleton')).toBeNull();
   });
 
+  /**
+   * A category switch queries a cache key RTK Query has never fetched
+   * before, so it starts with no data for that key. That state comes back
+   * as `isFetching: true, isLoading: false` — `isLoading` alone doesn't
+   * cover it, so the screen used to fall through to the `FlatList` branch
+   * with an empty `data` array and show "No results" while the new page
+   * was still in flight.
+   */
+  it('shows the skeleton again when switching category, not the empty state', async () => {
+    renderScreen();
+    expect(await screen.findByText('Gamepad Atlas')).toBeVisible();
+
+    fireEvent.press(screen.getByTestId('category-audio'));
+
+    expect(screen.getByTestId('list-skeleton')).toBeVisible();
+    expect(screen.queryByText('No results')).toBeNull();
+
+    expect(await screen.findByText('Headphones Atlas')).toBeVisible();
+  });
+
   it('filters the list when searching', async () => {
     jest.useFakeTimers();
     renderScreen();
